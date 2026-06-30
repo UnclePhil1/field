@@ -9,7 +9,7 @@ import {
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, callFunction } from '../lib/supabase';
-import { connectAndSign, disconnectWallet } from '../lib/wallet';
+import { connectAndSign, disconnectWallet, type SolanaProvider } from '../lib/wallet';
 
 /**
  * Auth lifecycle, backed by a real Supabase session:
@@ -27,7 +27,7 @@ interface AuthValue {
   username: string | null;
   connecting: boolean;
   error: string | null;
-  connect: () => Promise<void>;
+  connect: (provider?: SolanaProvider) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -71,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [loadProfile]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (provider?: SolanaProvider) => {
     setConnecting(true);
     setError(null);
     try {
-      const signed = await connectAndSign();
+      const signed = await connectAndSign(provider);
       const { session: newSession, profile } = await callFunction<{
         session: Session;
         profile: { username: string | null; wallet: string };

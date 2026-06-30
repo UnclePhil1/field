@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/AuthStore';
 import { Button } from '../../components/Button';
 import { WalletIcon } from '../../components/Icons';
-import { isWalletAvailable } from '../../lib/wallet';
+import { WalletPicker } from '../../components/WalletPicker';
+import type { SolanaProvider } from '../../lib/wallet';
 
 /**
  * Wallet sign-up / sign-in screen. Connecting a Solana wallet IS the
@@ -13,7 +14,7 @@ import { isWalletAvailable } from '../../lib/wallet';
 export function Connect() {
   const navigate = useNavigate();
   const { status, connect, connecting, error } = useAuth();
-  const hasWallet = isWalletAvailable();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Once connected, the guard-aware redirect runs based on status.
   useEffect(() => {
@@ -21,11 +22,12 @@ export function Connect() {
     else if (status === 'ready') navigate('/play', { replace: true });
   }, [status, navigate]);
 
-  async function handleConnect() {
+  async function handleSelect(provider: SolanaProvider) {
     try {
-      await connect();
+      await connect(provider);
+      setPickerOpen(false);
     } catch {
-      // error surfaced via the auth store
+      // error surfaced via the auth store; keep the picker open to retry
     }
   }
 
@@ -47,7 +49,7 @@ export function Connect() {
           size="lg"
           fullWidth
           className="mt-6"
-          onClick={handleConnect}
+          onClick={() => setPickerOpen(true)}
           disabled={connecting}
           leftIcon={<WalletIcon size={20} />}
         >
@@ -56,20 +58,17 @@ export function Connect() {
 
         {error && <p className="mt-3 text-xs text-flare-2">{error}</p>}
 
-        {!hasWallet && (
-          <p className="mt-3 text-xs text-muted">
-            No Solana wallet detected. Install any Solana wallet —{' '}
-            <a href="https://phantom.app" target="_blank" rel="noreferrer" className="text-grass hover:underline">Phantom</a>,{' '}
-            <a href="https://solflare.com" target="_blank" rel="noreferrer" className="text-grass hover:underline">Solflare</a>, or{' '}
-            <a href="https://backpack.app" target="_blank" rel="noreferrer" className="text-grass hover:underline">Backpack</a>{' '}
-            — to sign in.
-          </p>
-        )}
-
         <p className="mt-6 text-xs leading-relaxed text-muted">
           Join the fun.
         </p>
       </div>
+
+      <WalletPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleSelect}
+        connecting={connecting}
+      />
     </div>
   );
 }

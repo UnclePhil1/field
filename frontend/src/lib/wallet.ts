@@ -23,34 +23,55 @@ declare global {
   }
 }
 
-/** All injected Solana providers we can find, in rough preference order. */
-function candidates(): SolanaProvider[] {
-  if (typeof window === 'undefined') return [];
-  const list = [
-    window.phantom?.solana,
-    window.solflare,
-    window.backpack,
-    window.glow,
-    window.coin98?.sol,
-    window.solana, // generic — most wallets inject here too
-  ];
-  // de-dupe (some wallets appear under multiple keys) and keep only real providers
-  const seen = new Set<SolanaProvider>();
-  return list.filter((p): p is SolanaProvider => {
-    if (!p || typeof p.connect !== 'function' || seen.has(p)) return false;
-    seen.add(p);
-    return true;
+// Known Solana wallets we surface in the picker. Each resolves its injected
+// provider if installed. `brand` is a Field-token-friendly accent for the badge.
+interface WalletDef {
+  id: string;
+  name: string;
+  brand: string;
+  url: string; // install page
+  resolve: () => SolanaProvider | undefined;
+}
+
+const CATALOG: WalletDef[] = [
+  { id: 'phantom', name: 'Phantom', brand: '#ab9ff2', url: 'https://phantom.app',
+    resolve: () => window.phantom?.solana ?? (window.solana?.isPhantom ? window.solana : undefined) },
+  { id: 'solflare', name: 'Solflare', brand: '#ffc23f', url: 'https://solflare.com',
+    resolve: () => window.solflare },
+  { id: 'backpack', name: 'Backpack', brand: '#e33e3f', url: 'https://backpack.app',
+    resolve: () => window.backpack },
+  { id: 'glow', name: 'Glow', brand: '#9b8cff', url: 'https://glow.app',
+    resolve: () => window.glow },
+  { id: 'coin98', name: 'Coin98', brand: '#cda434', url: 'https://coin98.com',
+    resolve: () => window.coin98?.sol },
+];
+
+export interface WalletOption {
+  id: string;
+  name: string;
+  brand: string;
+  url: string;
+  /** the injected provider, or null if the wallet isn't installed */
+  provider: SolanaProvider | null;
+}
+
+/** The catalog with live detection — installed wallets have a provider. */
+export function detectWallets(): WalletOption[] {
+  return CATALOG.map((w) => {
+    const p = w.resolve();
+    const ok = p && typeof p.connect === 'function' ? p : null;
+    return { id: w.id, name: w.name, brand: w.brand, url: w.url, provider: ok };
   });
 }
 
-/** Pick a usable provider — prefer one that can sign messages (needed for login). */
+/** First installed provider that can sign (fallback / quick path). */
 export function getProvider(): SolanaProvider | null {
-  const provs = candidates();
-  return provs.find((p) => typeof p.signMessage === 'function') ?? provs[0] ?? null;
+  const installed = detectWallets().map((w) => w.provider).filter((p): p is SolanaProvider => !!p);
+  return installed.find((p) => typeof p.signMessage === 'function') ?? installed[0] ?? null;
 }
 
 export function isWalletAvailable(): boolean {
-  return getProvider() != null;
+  return detectWallets().some((w) => w.provider);
 }
 
 /** Shorten an address for display: `7xKa…9fQ2`. */
@@ -89,11 +110,12 @@ export interface WalletSignIn {
 }
 
 /**
- * Connect the wallet and produce a signed login message for the backend.
+ * Connect a (chosen) wallet and produce a signed login message for the backend.
+ * Pass the provider from the picker; falls back to the first installed wallet.
  * Throws if no wallet is present or the user rejects.
  */
-export async function connectAndSign(): Promise<WalletSignIn> {
-  const provider = getProvider();
+export async function connectAndSign(chosen?: SolanaProvider): Promise<WalletSignIn> {
+  const provider = chosen ?? getProvider();
   if (!provider) throw new Error('No Solana wallet found. Install a Solana wallet (Phantom, Solflare, Backpack…) to continue.');
   if (!provider.signMessage) throw new Error('This wallet does not support message signing.');
 
