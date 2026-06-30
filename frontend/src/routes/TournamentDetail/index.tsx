@@ -18,7 +18,7 @@ import type { Match } from '../../types';
 export function TournamentDetail() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { wallet } = useAuth();
+  const { wallet, userId } = useAuth();
   const [t, setT] = useState<Tournament | null>(null);
   const [match, setMatch] = useState<Match | undefined>();
   const [standings, setStandings] = useState<Standing[]>([]);
@@ -187,7 +187,7 @@ export function TournamentDetail() {
                   </li>
                 ))}
               </ul>
-              {t.hostUserId && wallet && (
+              {userId === t.hostUserId && (
                 <Link to={`/tournaments/${t.id}/payouts`} className="mt-3 block text-center text-xs font-semibold text-grass hover:underline">
                   Host payout dashboard →
                 </Link>

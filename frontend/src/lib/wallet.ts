@@ -16,12 +16,37 @@ declare global {
   interface Window {
     solana?: SolanaProvider;
     phantom?: { solana?: SolanaProvider };
+    solflare?: SolanaProvider;
+    backpack?: SolanaProvider;
+    glow?: SolanaProvider;
+    coin98?: { sol?: SolanaProvider };
   }
 }
 
+/** All injected Solana providers we can find, in rough preference order. */
+function candidates(): SolanaProvider[] {
+  if (typeof window === 'undefined') return [];
+  const list = [
+    window.phantom?.solana,
+    window.solflare,
+    window.backpack,
+    window.glow,
+    window.coin98?.sol,
+    window.solana, // generic — most wallets inject here too
+  ];
+  // de-dupe (some wallets appear under multiple keys) and keep only real providers
+  const seen = new Set<SolanaProvider>();
+  return list.filter((p): p is SolanaProvider => {
+    if (!p || typeof p.connect !== 'function' || seen.has(p)) return false;
+    seen.add(p);
+    return true;
+  });
+}
+
+/** Pick a usable provider — prefer one that can sign messages (needed for login). */
 export function getProvider(): SolanaProvider | null {
-  if (typeof window === 'undefined') return null;
-  return window.phantom?.solana ?? window.solana ?? null;
+  const provs = candidates();
+  return provs.find((p) => typeof p.signMessage === 'function') ?? provs[0] ?? null;
 }
 
 export function isWalletAvailable(): boolean {
@@ -69,7 +94,7 @@ export interface WalletSignIn {
  */
 export async function connectAndSign(): Promise<WalletSignIn> {
   const provider = getProvider();
-  if (!provider) throw new Error('No Solana wallet found. Install Phantom to continue.');
+  if (!provider) throw new Error('No Solana wallet found. Install a Solana wallet (Phantom, Solflare, Backpack…) to continue.');
   if (!provider.signMessage) throw new Error('This wallet does not support message signing.');
 
   const { publicKey } = await provider.connect();

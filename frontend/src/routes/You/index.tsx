@@ -41,8 +41,8 @@ export function You() {
           <Stat label="Hit rate" value={`${hitRate}%`} />
           <Stat label="Calls" value={`${calls.length}`} />
         </div>
-        <Button variant="turf" size="md" fullWidth className="mt-4" leftIcon={<ShareIcon size={16} />}>
-          Share my streak card
+        <Button variant="turf" size="md" fullWidth className="mt-4" leftIcon={<ShareIcon size={16} />} disabled title="Coming soon">
+          Share my streak card — coming soon
         </Button>
       </section>
 

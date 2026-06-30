@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { tournamentApi } from '../../lib/tournamentApi';
+import { useAuth } from '../../app/AuthStore';
 import { StatLabel } from '../../components/StatLabel';
 import { Button } from '../../components/Button';
 import { shortWallet, payoutCountdown, explorerTx, formatPrize } from '../../features/tournament/util';
@@ -10,16 +11,21 @@ import type { Payout, Tournament } from '../../types/tournament';
 /** Host-only dashboard: pay winners off-app, then mark paid with the tx sig. */
 export function TournamentPayouts() {
   const { id = '' } = useParams();
+  const { userId } = useAuth();
   const [t, setT] = useState<Tournament | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     setT(await tournamentApi.getById(id) ?? null);
     setPayouts(await tournamentApi.getPayouts(id));
+    setLoaded(true);
   }, [id]);
   useEffect(() => { refresh(); }, [refresh]);
 
-  if (!t) return <div className="mx-auto max-w-[680px] px-4 py-8 text-muted">Loading…</div>;
+  if (!loaded || !t) return <div className="mx-auto max-w-[680px] px-4 py-8 text-muted">Loading…</div>;
+  // Host-only page: anyone else is bounced to the public detail view.
+  if (!userId || userId !== t.hostUserId) return <Navigate to={`/tournaments/${id}`} replace />;
   const deadline = payoutCountdown(t.payoutDeadline);
 
   return (

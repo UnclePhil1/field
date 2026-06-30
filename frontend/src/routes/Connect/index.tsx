@@ -58,11 +58,11 @@ export function Connect() {
 
         {!hasWallet && (
           <p className="mt-3 text-xs text-muted">
-            No Solana wallet detected. Install{' '}
-            <a href="https://phantom.app" target="_blank" rel="noreferrer" className="text-grass hover:underline">
-              Phantom
-            </a>{' '}
-            to sign in.
+            No Solana wallet detected. Install any Solana wallet —{' '}
+            <a href="https://phantom.app" target="_blank" rel="noreferrer" className="text-grass hover:underline">Phantom</a>,{' '}
+            <a href="https://solflare.com" target="_blank" rel="noreferrer" className="text-grass hover:underline">Solflare</a>, or{' '}
+            <a href="https://backpack.app" target="_blank" rel="noreferrer" className="text-grass hover:underline">Backpack</a>{' '}
+            — to sign in.
           </p>
         )}
 

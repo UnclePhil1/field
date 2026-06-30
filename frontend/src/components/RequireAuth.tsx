@@ -19,7 +19,7 @@ export function RequireAuth() {
       </div>
     );
   }
-  if (status === 'guest') return <Navigate to="/connect" replace />;
+  if (status === 'guest') return <Navigate to="/welcome" replace />;
   if (status === 'needs-username') return <Navigate to="/onboard" replace />;
 
   return <AppShell />;

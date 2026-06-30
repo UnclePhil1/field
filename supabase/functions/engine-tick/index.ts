@@ -131,16 +131,24 @@ Deno.serve(async (req) => {
   try {
     const fixtures: TxFixture[] = await fetchFixtures(session, WC_COMPETITION_ID);
     const now = Date.now();
+    // Preserve real terminal status: never downgrade a finished/voided match back
+    // to "live" via the wall-clock guess below — the live loop owns that via the feed.
+    const { data: existing } = await db.from('matches').select('id, status');
+    const terminal = new Set((existing ?? []).filter((m) => m.status === 'finished' || m.status === 'voided').map((m) => m.id));
     for (const f of fixtures) {
+      const id = String(f.FixtureId);
       const start = Number(f.StartTime);
       const elapsedMin = Math.floor((now - start) / 60000);
-      // Generous window so ET/penalty matches still get polled and corrected by
-      // the live loop using the real feed clock/phase below.
-      const status = now < start ? 'upcoming' : elapsedMin <= 180 ? 'live' : 'finished';
+      // Wall-clock is only an INITIAL guess to get a started match into the live
+      // loop; the loop then confirms phase/finish from the real feed and the
+      // terminal set above stops it ever flipping back.
+      const status = terminal.has(id)
+        ? (existing!.find((m) => m.id === id)!.status as 'finished' | 'voided')
+        : now < start ? 'upcoming' : elapsedMin <= 180 ? 'live' : 'finished';
       const minute = status === 'live' ? Math.max(0, Math.min(90, elapsedMin)) : status === 'finished' ? 90 : 0;
       await db.from('matches').upsert(
         {
-          id: String(f.FixtureId),
+          id,
           txline_fixture_id: f.FixtureId,
           competition: 'World Cup',
           home_code: code(f.Participant1),

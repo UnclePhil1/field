@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RequireAuth } from '../components/RequireAuth';
+import { Landing } from '../routes/Landing';
 import { Connect } from '../routes/Connect';
 import { Onboard } from '../routes/Onboard';
 import { Lobby } from '../routes/Lobby';
@@ -13,7 +14,8 @@ import { TournamentPayouts } from '../routes/TournamentPayouts';
 import { MyTournaments } from '../routes/MyTournaments';
 
 export const router = createBrowserRouter([
-  // Public wallet sign-up flow.
+  // Public landing + wallet sign-up flow.
+  { path: '/welcome', element: <Landing /> },
   { path: '/connect', element: <Connect /> },
   { path: '/onboard', element: <Onboard /> },
   // Authenticated platform — guarded by wallet + username.
