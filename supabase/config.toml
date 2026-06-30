@@ -1,0 +1,16 @@
+project_id = "field"
+
+[functions.wallet-auth]
+verify_jwt = false
+
+[functions.place-call]
+verify_jwt = true
+
+[functions.engine-tick]
+verify_jwt = false
+
+[functions.txline-proof]
+verify_jwt = false
+
+[functions.tournaments]
+verify_jwt = false

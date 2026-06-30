@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.ns", "esnext"],
+    "strict": true
+  },
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "tweetnacl": "npm:tweetnacl@1.0.3",
+    "bs58": "npm:bs58@5.0.0"
+  }
+}

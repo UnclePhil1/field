@@ -1,0 +1,257 @@
+/* The Pitch: a top-down chalk pitch over mown stripes.
+   Overlays (momentum heat, threat marker, event pulse) are an honest
+   INTERPRETATION of verifiable events — never a claim of player tracking. */
+
+.pitch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--turf-stripe-a) 0,
+      var(--turf-stripe-a) 9%,
+      var(--turf-stripe-b) 9%,
+      var(--turf-stripe-b) 18%
+    );
+  border: 1px solid var(--edge);
+}
+
+.pitch__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* momentum heat — soft grass glow that drifts toward whoever is on top */
+.pitch__heat {
+  position: absolute;
+  top: 50%;
+  width: 62%;
+  height: 150%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(43, 212, 107, 0.22), transparent 72%);
+  filter: blur(2px);
+  transition: left 1.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+  pointer-events: none;
+}
+
+/* threat marker — flare dot at the active third; snaps on events */
+.pitch__threat {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--flare);
+  box-shadow: 0 0 0 4px rgba(255, 106, 0, 0.18), 0 0 14px 2px rgba(255, 106, 0, 0.5);
+  transition: left 0.7s cubic-bezier(0.34, 1.4, 0.5, 1), top 0.7s ease;
+  pointer-events: none;
+}
+
+/* event pulse — expanding ring at the spot of a goal/corner/card */
+.pitch__pulse {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid var(--grass);
+  pointer-events: none;
+  animation: pitch-pulse 1.1s ease-out forwards;
+}
+.pitch__pulse--flare { border-color: var(--flare); }
+
+@keyframes pitch-pulse {
+  0% { opacity: 0.9; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(6); }
+}
+
+@keyframes heat-breathe {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+.pitch__heat { animation: heat-breathe 3.2s ease-in-out infinite; }
+
+/* schematic formation dots — a decorative team shape, NOT player tracking.
+   Numbers are generic shirt numbers, never real player identities. */
+.pitch__player {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 700;
+  border: 1px solid;
+  pointer-events: none;
+}
+.pitch__player--home {
+  background: rgba(43, 212, 107, 0.22);
+  border-color: rgba(43, 212, 107, 0.5);
+  color: var(--chalk);
+}
+.pitch__player--away {
+  background: rgba(166, 187, 173, 0.14);
+  border-color: var(--edge-2);
+  color: var(--chalk-dim);
+}
+
+/* corner glow — amber radial bloom at the corner where the kick is taken */
+.pitch__corner-glow {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 200, 0, 0.5), rgba(255, 106, 0, 0.18), transparent 75%);
+  pointer-events: none;
+  animation: corner-glow 2.6s ease-out forwards;
+}
+@keyframes corner-glow {
+  0% { opacity: 0; transform: scale(0.5); }
+  18% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* corner indicator — a glowing amber dot with a small "Corner Kick" label */
+.pitch__corner {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.pitch__corner--low {
+  flex-direction: column-reverse; /* near the top edge → label below the dot */
+}
+.pitch__corner-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--flare-2);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.pitch__corner-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--flare);
+  animation: corner-dot-pulse 1.1s ease-out infinite;
+}
+@keyframes corner-dot-pulse {
+  0% { box-shadow: 0 0 4px 1px rgba(255, 106, 0, 0.8), 0 0 0 0 rgba(255, 106, 0, 0.55); }
+  70% { box-shadow: 0 0 9px 3px rgba(255, 106, 0, 0.6), 0 0 0 11px rgba(255, 106, 0, 0); }
+  100% { box-shadow: 0 0 4px 1px rgba(255, 106, 0, 0.8), 0 0 0 0 rgba(255, 106, 0, 0); }
+}
+
+/* card — a small booking card that drops onto the team's zone */
+.pitch__card {
+  position: absolute;
+  width: 13px;
+  height: 18px;
+  margin: -9px 0 0 -6px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transform-origin: center;
+  animation: card-drop 2.6s ease-out forwards;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.pitch__card--yellow { background: #ffd21e; }
+.pitch__card--red { background: #ff3b30; }
+@keyframes card-drop {
+  0% { opacity: 0; transform: translateY(-10px) rotate(-12deg) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) rotate(-8deg) scale(1); }
+  85% { opacity: 1; transform: translateY(0) rotate(-8deg) scale(1); }
+  100% { opacity: 0; transform: translateY(0) rotate(-8deg) scale(1); }
+}
+
+/* goal celebration — ball travels into the opponent's goal, then GOAL zooms in */
+.pitch__goal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.pitch__goal-ball {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #b9c6bd 70%, #8aa092);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55);
+}
+.pitch__goal-ball--right { animation: goal-ball-right 0.9s cubic-bezier(0.45, 0, 0.85, 0.6) forwards; }
+.pitch__goal-ball--left { animation: goal-ball-left 0.9s cubic-bezier(0.45, 0, 0.85, 0.6) forwards; }
+@keyframes goal-ball-right {
+  0% { left: 50%; top: 50%; transform: scale(1); }
+  70% { top: 47%; }
+  100% { left: 95%; top: 50%; transform: scale(0.6); opacity: 0.6; }
+}
+@keyframes goal-ball-left {
+  0% { left: 50%; top: 50%; transform: scale(1); }
+  70% { top: 47%; }
+  100% { left: 5%; top: 50%; transform: scale(0.6); opacity: 0.6; }
+}
+.pitch__goal-word {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.pitch__goal-word span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.9;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--grass);
+  font-size: clamp(30px, 10vw, 66px);
+  text-shadow: 0 2px 20px rgba(43, 212, 107, 0.55), 0 1px 2px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: scale(0.2);
+  animation: goal-word-in 0.55s 0.85s cubic-bezier(0.2, 1.3, 0.4, 1) forwards,
+    goal-word-out 0.5s 3.1s ease forwards;
+}
+.pitch__goal-word small {
+  font-size: 0.26em;
+  letter-spacing: 0.25em;
+  color: var(--chalk-dim);
+  font-weight: 700;
+  margin-top: 0.5em;
+}
+@keyframes goal-word-in {
+  0% { opacity: 0; transform: scale(0.2); }
+  65% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes goal-word-out {
+  to { opacity: 0; transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch__heat { animation: none; }
+  .pitch__threat { transition: none; }
+  .pitch__corner-glow,
+  .pitch__card { animation-duration: 0.01s; animation-iteration-count: 1; }
+  .pitch__corner-dot { animation: none; box-shadow: 0 0 6px 2px rgba(255, 106, 0, 0.7); }
+  .pitch__goal-ball--right,
+  .pitch__goal-ball--left { animation: none; opacity: 0; }
+  .pitch__goal-word span { animation: goal-word-in 0.2s both; }
+}

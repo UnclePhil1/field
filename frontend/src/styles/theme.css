@@ -1,0 +1,50 @@
+/* Field theme tokens — the contract. Components reference these only.
+   Never hardcode hex in a component; add nothing off-palette here. */
+:root {
+  /* surfaces */
+  --pitch: #091310;          /* app background          */
+  --pitch-deep: #060d0a;     /* deepest / app backdrop  */
+  --turf: #0e1c14;           /* card / panel surface    */
+  --turf-2: #112619;         /* raised surface          */
+  --turf-stripe-a: #0f2417;  /* pitch mow stripe A      */
+  --turf-stripe-b: #0c1f13;  /* pitch mow stripe B      */
+  --edge: #1b3322;           /* hairline border         */
+  --edge-2: #244a30;         /* stronger border / outline */
+  --line: rgba(43, 212, 107, 0.14); /* faint chalk/pitch line */
+
+  /* ink */
+  --chalk: #eaf3ec;          /* primary text            */
+  --chalk-dim: #a6bbad;      /* secondary text          */
+  --muted: #6e8478;          /* tertiary / labels       */
+
+  /* brand */
+  --grass: #2bd46b;          /* primary: actions, win, verified, the "dot" */
+  --grass-deep: #16a34a;     /* primary pressed / deep glow */
+  --flare: #ff6a00;          /* LIVE, countdown urgency, streak fire */
+  --flare-2: #ff9248;        /* flare text on dark      */
+  --ink: #05100a;            /* text ON grass buttons   */
+
+  /* focus ring (derived from grass, kept here so it stays on-palette) */
+  --focus: rgba(43, 212, 107, 0.65);
+
+  /* ---- RGB channel mirrors of the tokens above ----
+     The hex values are the canonical palette (used directly in CSS/SVG).
+     These channel triplets exist only so Tailwind can apply alpha, e.g.
+     `bg-grass/12` -> rgb(var(--grass-rgb) / 0.12). Keep them in sync. */
+  --pitch-rgb: 9 19 16;
+  --pitch-deep-rgb: 6 13 10;
+  --turf-rgb: 14 28 20;
+  --turf-2-rgb: 17 38 25;
+  --turf-stripe-a-rgb: 15 36 23;
+  --turf-stripe-b-rgb: 12 31 19;
+  --edge-rgb: 27 51 34;
+  --edge-2-rgb: 36 74 48;
+  --chalk-rgb: 234 243 236;
+  --chalk-dim-rgb: 166 187 173;
+  --muted-rgb: 110 132 120;
+  --grass-rgb: 43 212 107;
+  --grass-deep-rgb: 22 163 74;
+  --flare-rgb: 255 106 0;
+  --flare-2-rgb: 255 146 72;
+  --ink-rgb: 5 16 10;
+}

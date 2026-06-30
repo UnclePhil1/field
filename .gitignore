@@ -1,0 +1,28 @@
+# Dependencies / build
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Env & secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.local
+
+# Wallet keypairs / private keys — NEVER commit
+*wallet*.json
+my-wallet.json
+*.key
+*-keypair.json
+id.json
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

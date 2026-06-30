@@ -1,0 +1,9 @@
+{
+  "//": "Edge Functions are Deno, not Node. Scope the Deno language server to that folder so jsr:/npm:/Deno specifiers resolve and the Node TS server stops flagging them. Requires the 'Deno' extension (denoland.vscode-deno).",
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.enable": false,
+  "deno.unstable": false,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

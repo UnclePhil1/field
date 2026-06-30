@@ -1,0 +1,6 @@
+node_modules/
+# Never commit wallet keypairs — they control real funds.
+*.json
+!package.json
+!txoracle-idl.json
+my-wallet.json

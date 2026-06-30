@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- base ---- */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background: var(--pitch-deep);
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--pitch);
+    color: var(--chalk);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'cv05', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible, on-palette keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Mono for live numbers — opt-in via .tabular */
+  .tabular {
+    font-family: 'JetBrains Mono', ui-monospace, 'DejaVu Sans Mono', 'SF Mono', Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+}
+
+/* ---- atmospheric backdrop: faint stadium glow behind the app ---- */
+.app-backdrop {
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(43, 212, 107, 0.06), transparent 60%),
+    radial-gradient(80% 60% at 50% 110%, rgba(255, 106, 0, 0.04), transparent 60%),
+    var(--pitch);
+}
+
+/* corner arcs — quarter-circle ticks on hero cards (a Field signature) */
+.corner-arcs::before,
+.corner-arcs::after,
+.corner-arcs > .arc-b::before,
+.corner-arcs > .arc-b::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line);
+  pointer-events: none;
+}
+.corner-arcs::before { top: 10px; left: 10px; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+.corner-arcs::after { top: 10px; right: 10px; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+.corner-arcs > .arc-b::before { bottom: 10px; left: 10px; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+.corner-arcs > .arc-b::after { bottom: 10px; right: 10px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+
+/* ---- shared keyframes ---- */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.78); }
+}
+@keyframes win-reveal {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(0) scale(1.01); }
+  100% { transform: scale(1); }
+}
+@keyframes ticker-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes coin-bump {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+.animate-live-pulse { animation: live-pulse 1.4s ease-in-out infinite; }
+.animate-win-reveal { animation: win-reveal 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.animate-ticker-in { animation: ticker-in 0.35s ease both; }
+.animate-coin-bump { animation: coin-bump 0.45s ease; }
+
+/* ---- reduced motion: kill all looping / non-essential animation ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* hide scrollbars on the horizontal ticker without losing scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
