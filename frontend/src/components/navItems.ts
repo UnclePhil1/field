@@ -10,7 +10,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Matches', Icon: PitchIcon, match: (p) => p === '/' || p.startsWith('/lobby') },
+  { to: '/play', label: 'Matches', Icon: PitchIcon, match: (p) => p === '/play' || p.startsWith('/lobby') },
   { to: '/match/eng-fra', label: 'Play', Icon: PlayIcon, match: (p) => p.startsWith('/match') },
   { to: '/tournaments', label: 'Battles', Icon: TrophyIcon, match: (p) => p.startsWith('/tournaments') },
   { to: '/board', label: 'Board', Icon: BoardIcon, match: (p) => p.startsWith('/board') },

@@ -18,7 +18,7 @@ export function Connect() {
   // Once connected, the guard-aware redirect runs based on status.
   useEffect(() => {
     if (status === 'needs-username') navigate('/onboard', { replace: true });
-    else if (status === 'ready') navigate('/', { replace: true });
+    else if (status === 'ready') navigate('/play', { replace: true });
   }, [status, navigate]);
 
   async function handleConnect() {

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../app/AuthStore';
 import { Button } from '../../components/Button';
 import { Pitch } from '../../components/Pitch';
@@ -22,8 +22,10 @@ const FEATURES = [
 
 export function Landing() {
   const { status } = useAuth();
-  const ctaTo = status === 'ready' ? '/' : '/connect';
-  const ctaLabel = status === 'ready' ? 'Enter Field' : 'Connect wallet to play';
+  // already signed in → straight into the app
+  if (status === 'ready') return <Navigate to="/play" replace />;
+  const ctaTo = '/connect';
+  const ctaLabel = 'Connect wallet to play';
 
   return (
     <div className="app-backdrop min-h-dvh">
@@ -33,7 +35,7 @@ export function Landing() {
           Field<span className="text-grass">.</span>
         </span>
         <Link to={ctaTo}>
-          <Button variant="grass" size="sm">{status === 'ready' ? 'Enter' : 'Connect'}</Button>
+          <Button variant="grass" size="sm">Connect</Button>
         </Link>
       </header>
 
@@ -53,7 +55,7 @@ export function Landing() {
             <Link to={ctaTo}>
               <Button variant="grass" size="lg" leftIcon={<ArrowIcon size={18} />}>{ctaLabel}</Button>
             </Link>
-            <span className="text-xs text-muted">Free to play · provably fair · not a betting site</span>
+            {/* <span className="text-xs text-muted">Free to play · provably fair · not a betting site</span> */}
           </div>
         </div>
 
@@ -72,7 +74,7 @@ export function Landing() {
       <section className="mx-auto w-full max-w-[1100px] px-5 py-6">
         <div className="rounded-card-lg border border-edge bg-turf p-6 text-center">
           <p className="mx-auto max-w-2xl text-lg font-semibold leading-relaxed text-chalk">
-            Field turns the phone already in your hand into a fast, social prediction game — and proves
+            Field turns the phone already in your hand into a fast, social prediction game. And it proves
             every result is real using match data cryptographically anchored on Solana.
           </p>
         </div>

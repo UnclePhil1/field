@@ -39,13 +39,20 @@ function phaseForMinute(minute: number): MatchPhase {
 
 type Entry = Record<string, any>;
 
-/** The current state = the scores entry with the latest timestamp. */
+/**
+ * The current state = the latest entry that actually carries a game StatusId.
+ * TxODDS interleaves "scheduled" placeholder entries (no StatusId/Clock) that
+ * can have the highest timestamp — trusting those made finished games look live.
+ */
 function pickLatest(scores: unknown[]): Entry | null {
-  let best: Entry | null = null;
+  const ts = (r: Entry) => Number(r?.Ts ?? r?.ts ?? 0);
+  let best: Entry | null = null; // latest WITH a StatusId
+  let anyLatest: Entry | null = null; // overall latest (fallback only)
   for (const r of scores as Entry[]) {
-    if (!best || Number(r?.Ts ?? r?.ts ?? 0) > Number(best?.Ts ?? best?.ts ?? 0)) best = r;
+    if (!anyLatest || ts(r) > ts(anyLatest)) anyLatest = r;
+    if (r?.StatusId != null && (!best || ts(r) > ts(best))) best = r;
   }
-  return best;
+  return best ?? anyLatest;
 }
 
 /** Read a cumulative stat value (by key) from a scores entry's Stats map. */

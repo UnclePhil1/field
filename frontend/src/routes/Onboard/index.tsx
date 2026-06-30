@@ -19,7 +19,7 @@ export function Onboard() {
 
   // Guard: must have connected first; already-onboarded users skip this.
   if (status === 'guest') return <Navigate to="/connect" replace />;
-  if (status === 'ready') return <Navigate to="/" replace />;
+  if (status === 'ready') return <Navigate to="/play" replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,7 +32,7 @@ export function Onboard() {
     setError(null);
     try {
       await setUsername(name);
-      navigate('/', { replace: true });
+      navigate('/play', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save username.');
     } finally {

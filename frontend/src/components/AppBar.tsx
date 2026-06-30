@@ -9,7 +9,7 @@ import { shortAddress } from '../lib/wallet';
 export function Wordmark({ className = '' }: { className?: string }) {
   return (
     <Link
-      to="/"
+      to="/play"
       className={['inline-flex items-baseline font-extrabold tracking-tightest text-chalk', className].join(' ')}
       aria-label="Field — home"
     >

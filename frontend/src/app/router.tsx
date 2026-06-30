@@ -14,15 +14,15 @@ import { TournamentPayouts } from '../routes/TournamentPayouts';
 import { MyTournaments } from '../routes/MyTournaments';
 
 export const router = createBrowserRouter([
-  // Public landing + wallet sign-up flow.
-  { path: '/welcome', element: <Landing /> },
+  // Public landing (root) + wallet sign-up flow.
+  { path: '/', element: <Landing /> },
   { path: '/connect', element: <Connect /> },
   { path: '/onboard', element: <Onboard /> },
-  // Authenticated platform — guarded by wallet + username.
+  // Authenticated platform — guarded by wallet + username. Home is /play.
   {
     element: <RequireAuth />,
     children: [
-      { path: '/', element: <Lobby /> },
+      { path: '/play', element: <Lobby /> },
       { path: '/match/:id', element: <MatchRoom /> },
       { path: '/tournaments', element: <Tournaments /> },
       { path: '/tournaments/create', element: <TournamentCreate /> },
@@ -31,7 +31,7 @@ export const router = createBrowserRouter([
       { path: '/tournaments/:id/payouts', element: <TournamentPayouts /> },
       { path: '/board', element: <Leaderboard /> },
       { path: '/you', element: <You /> },
-      { path: '*', element: <Navigate to="/" replace /> },
+      { path: '*', element: <Navigate to="/play" replace /> },
     ],
   },
 ]);
