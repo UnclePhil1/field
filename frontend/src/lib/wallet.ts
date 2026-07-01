@@ -109,6 +109,20 @@ export interface WalletSignIn {
   signature: string; // base58
 }
 
+/** Minimal shape of a wallet provider that can sign a message (AppKit / injected). */
+export interface SignMessageProvider {
+  signMessage: (message: Uint8Array) => Promise<Uint8Array | { signature: Uint8Array }>;
+}
+
+/** Build the signed login payload for `wallet-auth` from a connected provider. */
+export async function buildSignInPayload(wallet: string, provider: SignMessageProvider): Promise<WalletSignIn> {
+  const nonce = Math.random().toString(36).slice(2);
+  const message = `Sign in to Field\nwallet: ${wallet}\nnonce: ${nonce}`;
+  const res = await provider.signMessage(new TextEncoder().encode(message));
+  const sig = res instanceof Uint8Array ? res : res.signature;
+  return { wallet, message, signature: base58(sig) };
+}
+
 /**
  * Connect a (chosen) wallet and produce a signed login message for the backend.
  * Pass the provider from the picker; falls back to the first installed wallet.

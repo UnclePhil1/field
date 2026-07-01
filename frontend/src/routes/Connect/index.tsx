@@ -1,74 +1,86 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import type { Provider } from '@reown/appkit-adapter-solana/react';
 import { useAuth } from '../../app/AuthStore';
 import { Button } from '../../components/Button';
+import { Logo } from '../../components/Logo';
 import { WalletIcon } from '../../components/Icons';
-import { WalletPicker } from '../../components/WalletPicker';
-import type { SolanaProvider } from '../../lib/wallet';
+import { buildSignInPayload } from '../../lib/wallet';
 
 /**
- * Wallet sign-up / sign-in screen. Connecting a Solana wallet IS the
- * account: a brand-new wallet is routed to /onboard to pick a username,
- * a returning one drops straight into the app.
+ * Wallet sign-in via Reown AppKit. Tapping "Connect" opens the AppKit modal
+ * (WalletConnect + injected + mobile deep links). Once a wallet is connected we
+ * ask it to sign a login message and exchange it for a Supabase session.
  */
 export function Connect() {
   const navigate = useNavigate();
-  const { status, connect, connecting, error } = useAuth();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [params] = useSearchParams();
+  const redirect = params.get('redirect');
+  const { status, authenticate, connecting, error } = useAuth();
 
-  // Once connected, the guard-aware redirect runs based on status.
+  const { open } = useAppKit();
+  const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider<Provider>('solana');
+  const [signing, setSigning] = useState(false);
+  const attempted = useRef<string | null>(null);
+
+  // Route onward once we have a session, preserving any shared deep-link.
   useEffect(() => {
-    if (status === 'needs-username') navigate('/onboard', { replace: true });
-    else if (status === 'ready') navigate('/play', { replace: true });
-  }, [status, navigate]);
+    const q = redirect ? `?redirect=${redirect}` : '';
+    if (status === 'needs-username') navigate(`/onboard${q}`, { replace: true });
+    else if (status === 'ready') navigate(redirect ? decodeURIComponent(redirect) : '/play', { replace: true });
+  }, [status, navigate, redirect]);
 
-  async function handleSelect(provider: SolanaProvider) {
-    try {
-      await connect(provider);
-      setPickerOpen(false);
-    } catch {
-      // error surfaced via the auth store; keep the picker open to retry
-    }
-  }
+  // When a wallet connects (and we have no session yet), sign in.
+  useEffect(() => {
+    if (status !== 'guest') return;
+    if (!isConnected || !address || !walletProvider) return;
+    if (attempted.current === address) return; // one attempt per address
+    attempted.current = address;
+    setSigning(true);
+    (async () => {
+      try {
+        const signed = await buildSignInPayload(address, walletProvider as unknown as { signMessage: (m: Uint8Array) => Promise<Uint8Array> });
+        await authenticate(signed);
+      } catch {
+        attempted.current = null; // allow retry on failure/rejection
+      } finally {
+        setSigning(false);
+      }
+    })();
+  }, [isConnected, address, walletProvider, status, authenticate]);
+
+  const busy = signing || connecting;
 
   return (
     <div className="app-backdrop grid min-h-dvh place-items-center px-4">
       <div className="w-full max-w-sm rounded-card-lg border border-edge bg-turf p-7 text-center">
-        <span className="inline-flex items-baseline text-3xl font-extrabold tracking-tightest text-chalk">
-          Field<span className="text-grass">.</span>
+        <span className="inline-flex items-center gap-2 text-3xl font-extrabold tracking-tightest text-chalk">
+          <Logo size={55} className="rounded-full" />
+          {/* <span className="inline-flex items-baseline">Field<span className="text-grass">.</span></span> */}
         </span>
-        <h1 className="mt-5 text-xl font-extrabold tracking-display text-chalk">
-          Connect your wallet
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Your wallet is your account.
-        </p>
+        <h1 className="mt-5 text-xl font-extrabold tracking-display text-chalk">Connect your wallet</h1>
+        <p className="mt-2 text-sm text-muted">Your wallet is your account.</p>
 
         <Button
           variant="grass"
           size="lg"
           fullWidth
           className="mt-6"
-          onClick={() => setPickerOpen(true)}
-          disabled={connecting}
+          onClick={() => open()}
+          disabled={busy}
           leftIcon={<WalletIcon size={20} />}
         >
-          {connecting ? 'Connecting…' : 'Connect Solana wallet'}
+          {busy ? (signing ? 'Approve in your wallet…' : 'Signing in…') : 'Connect Solana wallet'}
         </Button>
 
         {error && <p className="mt-3 text-xs text-flare-2">{error}</p>}
 
         <p className="mt-6 text-xs leading-relaxed text-muted">
-          Join the fun.
+          Any Solana wallet works — mobile or desktop. No signup, no password.
         </p>
       </div>
-
-      <WalletPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={handleSelect}
-        connecting={connecting}
-      />
     </div>
   );
 }

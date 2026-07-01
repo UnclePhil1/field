@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/AuthStore';
 import { Button } from '../../components/Button';
 import { shortAddress } from '../../lib/wallet';
@@ -12,6 +12,9 @@ const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
  */
 export function Onboard() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const redirect = params.get('redirect');
+  const dest = redirect ? decodeURIComponent(redirect) : '/play';
   const { status, wallet, setUsername } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +22,7 @@ export function Onboard() {
 
   // Guard: must have connected first; already-onboarded users skip this.
   if (status === 'guest') return <Navigate to="/connect" replace />;
-  if (status === 'ready') return <Navigate to="/play" replace />;
+  if (status === 'ready') return <Navigate to={dest} replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,7 +35,7 @@ export function Onboard() {
     setError(null);
     try {
       await setUsername(name);
-      navigate('/play', { replace: true });
+      navigate(dest, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save username.');
     } finally {

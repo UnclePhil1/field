@@ -31,8 +31,9 @@ export function Landing() {
     <div className="app-backdrop min-h-dvh">
       {/* top bar */}
       <header className="mx-auto flex w-full max-w-[1100px] items-center justify-between px-5 py-5">
-        <span className="inline-flex items-baseline text-2xl font-extrabold tracking-tightest text-chalk">
-          Field<span className="text-grass">.</span>
+        <span className="inline-flex items-center gap-2 text-2xl font-extrabold tracking-tightest text-chalk">
+          {/* <Logo size={40} /> */}
+          <span className="inline-flex items-baseline">Field<span className="text-grass">.</span></span>
         </span>
         <Link to={ctaTo}>
           <Button variant="grass" size="sm">Connect</Button>

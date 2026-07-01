@@ -10,6 +10,7 @@ import { Button } from '../../components/Button';
 import { Chip } from '../../components/Chip';
 import { Modal } from '../../components/Modal';
 import { Flag } from '../../components/Flag';
+import { ShareButton } from '../../components/ShareButton';
 import { ArrowIcon, CheckIcon, TrophyIcon } from '../../components/Icons';
 import { untilKickoff } from '../../lib/format';
 import type { Tournament, Standing, Payout } from '../../types/tournament';
@@ -105,7 +106,10 @@ export function TournamentDetail() {
         {/* main column */}
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-display text-chalk">{t.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-extrabold tracking-display text-chalk">{t.title}</h1>
+              <ShareButton className="shrink-0" />
+            </div>
             <p className="mt-1 text-sm text-muted">{t.description}</p>
             <p className="mt-2 text-xs text-muted">
               Hosted by <span className="tabular font-semibold text-chalk-dim">{shortWallet(t.hostPayoutWallet)}</span>

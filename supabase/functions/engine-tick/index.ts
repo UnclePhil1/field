@@ -406,7 +406,8 @@ Deno.serve(async (req) => {
 
     if (!openCount || openCount === 0) {
       const phase = (m.phase as MatchPhase) ?? '2H';
-      if (isLivePhase(phase)) {
+      // No new cards during half-time — predictions resume when the ball is in play.
+      if (isLivePhase(phase) && phase !== 'HT') {
         const gen = generateCard({ phase, homeCode: m.home_code, awayCode: m.away_code, windowSeconds: CARD_WINDOW_SECONDS });
         const baseline = gen.txline_stat_key != null ? statOf(latest, gen.txline_stat_key) : null;
         await db.from('prediction_cards').insert({

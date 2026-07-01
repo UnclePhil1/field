@@ -9,7 +9,7 @@ import {
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, callFunction } from '../lib/supabase';
-import { connectAndSign, disconnectWallet, type SolanaProvider } from '../lib/wallet';
+import type { WalletSignIn } from '../lib/wallet';
 
 /**
  * Auth lifecycle, backed by a real Supabase session:
@@ -27,7 +27,8 @@ interface AuthValue {
   username: string | null;
   connecting: boolean;
   error: string | null;
-  connect: (provider?: SolanaProvider) => Promise<void>;
+  /** exchange a signed login message for a Supabase session */
+  authenticate: (signed: WalletSignIn) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -71,11 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [loadProfile]);
 
-  const connect = useCallback(async (provider?: SolanaProvider) => {
+  const authenticate = useCallback(async (signed: WalletSignIn) => {
     setConnecting(true);
     setError(null);
     try {
-      const signed = await connectAndSign(provider);
       const { session: newSession, profile } = await callFunction<{
         session: Session;
         profile: { username: string | null; wallet: string };
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setWallet(profile.wallet);
       setUsernameState(profile.username);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not connect wallet');
+      setError(e instanceof Error ? e.message : 'Could not sign in');
       throw e;
     } finally {
       setConnecting(false);
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    await disconnectWallet();
+    // AppKit disconnect is handled by the caller (needs the hook); we clear the session.
     await supabase.auth.signOut();
     setSession(null);
     setWallet(null);
@@ -137,11 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username,
       connecting,
       error,
-      connect,
+      authenticate,
       setUsername,
       signOut,
     }),
-    [status, session, wallet, username, connecting, error, connect, setUsername, signOut],
+    [status, session, wallet, username, connecting, error, authenticate, setUsername, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

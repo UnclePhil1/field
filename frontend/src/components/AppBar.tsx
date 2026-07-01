@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useDisconnect } from '@reown/appkit/react';
 import { useAppStore } from '../app/AppStore';
 import { useAuth } from '../app/AuthStore';
 import { Chip } from './Chip';
@@ -10,11 +11,14 @@ export function Wordmark({ className = '' }: { className?: string }) {
   return (
     <Link
       to="/play"
-      className={['inline-flex items-baseline font-extrabold tracking-tightest text-chalk', className].join(' ')}
+      className={['inline-flex items-center gap-1.5 font-extrabold tracking-tightest text-chalk', className].join(' ')}
       aria-label="Field — home"
     >
-      <span>Field</span>
-      <span className="text-grass">.</span>
+      {/* <Logo size={32} /> */}
+      <span className="inline-flex items-baseline">
+        <span>Field</span>
+        <span className="text-grass">.</span>
+      </span>
     </Link>
   );
 }
@@ -40,11 +44,17 @@ export function StreakChip() {
 export function WalletChip() {
   const navigate = useNavigate();
   const { wallet, username, signOut } = useAuth();
+  const { disconnect } = useDisconnect();
   if (!wallet) return null;
 
   async function handleSignOut() {
     await signOut();
-    navigate('/connect', { replace: true });
+    try {
+      await disconnect();
+    } catch {
+      /* best-effort */
+    }
+    navigate('/', { replace: true });
   }
 
   return (

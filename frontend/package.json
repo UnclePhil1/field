@@ -13,6 +13,8 @@
   "dependencies": {
     "@fontsource/inter": "^5.0.18",
     "@fontsource/jetbrains-mono": "^5.0.20",
+    "@reown/appkit": "^1.8.21",
+    "@reown/appkit-adapter-solana": "^1.8.21",
     "@supabase/supabase-js": "^2.108.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

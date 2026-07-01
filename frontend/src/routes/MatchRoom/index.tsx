@@ -4,6 +4,7 @@ import { useLiveMatch } from '../../lib/useLiveMatch';
 import { useAppStore } from '../../app/AppStore';
 import { tournamentApi } from '../../lib/tournamentApi';
 import { TrophyIcon } from '../../components/Icons';
+import { ShareButton } from '../../components/ShareButton';
 import { LivePanel } from '../../features/match/LivePanel';
 import { RecentCalls } from '../../features/match/RecentCalls';
 import { PredictionCard } from '../../features/prediction/PredictionCard';
@@ -71,6 +72,10 @@ export function MatchRoom() {
       <div className="flex flex-col gap-6 xl:flex-row">
       {/* center play column */}
       <div className="flex w-full min-w-0 flex-1 flex-col gap-4 xl:max-w-play">
+        <div className="flex items-center justify-between">
+          <span className="eyebrow">{match.home.name} v {match.away.name}</span>
+          <ShareButton label="Share match" />
+        </div>
         <LivePanel match={match} events={events} />
         <RecentCalls calls={recentCalls} onViewProof={setProof} />
       </div>
@@ -93,6 +98,7 @@ export function MatchRoom() {
             onViewProof={setProof}
             tournament={tour ? { id: tour.id, points: tour.points } : undefined}
             onTournamentChange={refreshTour}
+            paused={match.phase === 'HT'}
           />
         )}
       </aside>

@@ -20,6 +20,8 @@ interface PredictionCardProps {
   /** when set, wager from this tournament's points stack instead of casual coins */
   tournament?: { id: string; points: number };
   onTournamentChange?: () => void;
+  /** true at half-time — predictions are paused until the second half */
+  paused?: boolean;
 }
 
 /** Highlight the subject team code inside the question in grass. */
@@ -44,7 +46,7 @@ interface MyResult {
   stake: number;
 }
 
-export function PredictionCard({ card, onViewProof, tournament, onTournamentChange }: PredictionCardProps) {
+export function PredictionCard({ card, onViewProof, tournament, onTournamentChange, paused }: PredictionCardProps) {
   const { coins, multiplier, placeCall } = useAppStore();
   const { userId } = useAuth();
   const balance = tournament ? tournament.points : coins;
@@ -126,6 +128,18 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
   // ---- SETTLED ----
   if (isSettled) {
     return <SettledView card={card} result={myResult} onViewProof={onViewProof} />;
+  }
+
+  // ---- HALF-TIME (paused) ----
+  if (paused && !locked) {
+    return (
+      <section className="relative corner-arcs rounded-card-lg border border-edge bg-turf p-5 text-center shadow-card">
+        <span className="arc-b" aria-hidden />
+        <StatLabel>Half-time</StatLabel>
+        <p className="mt-2 text-base font-semibold text-chalk-dim">Predictions are paused.</p>
+        <p className="mt-1 text-sm text-muted">New cards resume when the second half kicks off.</p>
+      </section>
+    );
   }
 
   // ---- LIVE ----

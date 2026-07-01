@@ -13,6 +13,9 @@ import '@fontsource/jetbrains-mono/700.css';
 import './styles/theme.css';
 import './styles/globals.css';
 
+// Initialise Reown AppKit (wallet modal) once, before the app renders.
+import './lib/appkit';
+
 import { App } from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
