@@ -9,7 +9,7 @@ export function MatchCard({ match }: { match: Match }) {
   const live = match.status === 'live';
 
   // Only live matches are playable/clickable. Upcoming matches render as a
-  // static card so users can't enter a room that hasn't kicked off.
+  // static card so users can't enter a room that hasn't kicked off
   const baseClass =
     'group relative corner-arcs block rounded-card border border-edge bg-turf p-4 transition-colors';
   const Wrapper = ({ children }: { children: React.ReactNode }) =>
