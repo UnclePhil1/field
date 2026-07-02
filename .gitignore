@@ -17,6 +17,11 @@ my-wallet.json
 *-keypair.json
 id.json
 
+# Firebase service account (secret) — NEVER commit
+*firebase-adminsdk*.json
+*-service-account*.json
+wave-*.json
+
 # Supabase local
 supabase/.branches/
 supabase/.temp/

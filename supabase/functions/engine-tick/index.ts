@@ -11,6 +11,7 @@ import { getSession, fetchFixtures, fetchScores, type TxFixture } from '../_shar
 import { generateCard, isLivePhase, type MatchPhase } from '../_shared/cards.ts';
 import { score } from '../_shared/scoring.ts';
 import { countryToIso2 } from '../_shared/countries.ts';
+import { fcmEnabled, prefAllows, notifyUser } from '../_shared/fcm.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const WC_COMPETITION_ID = Number(Deno.env.get('TXLINE_COMPETITION_ID') ?? '0') || undefined;
@@ -370,6 +371,16 @@ Deno.serve(async (req) => {
           question: card.question,
           receipt,
         }, { onConflict: 'card_id,user_id' });
+
+        // push: "your call settled" (opt-in, gated on the service account)
+        if (fcmEnabled && await prefAllows(db, callRow.user_id, (p) => p.my_play?.settled !== false)) {
+          await notifyUser(db, callRow.user_id, {
+            title: r.won ? `⚽ Your call hit — +${r.payout}` : '✕ Not this time',
+            body: card.question,
+            url: `/match/${m.id}`,
+            tag: `settle-${card.id}`,
+          }).catch(() => {});
+        }
       }
 
       // ── 3b. Settle tournament-mode wagers on this card (separate stacks) ──

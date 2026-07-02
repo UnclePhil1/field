@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { AppBar } from '../components/AppBar';
 import { SideNav } from '../components/SideNav';
 import { BottomNav } from '../components/BottomNav';
+import { PushToast } from '../components/PushToast';
 
 /**
  * Mobile-first: AppBar on top, fixed BottomNav.
@@ -24,6 +25,7 @@ export function AppShell() {
         </div>
       </div>
       <BottomNav />
+      <PushToast />
     </div>
   );
 }
