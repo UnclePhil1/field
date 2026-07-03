@@ -74,6 +74,12 @@ export function isWalletAvailable(): boolean {
   return detectWallets().some((w) => w.provider);
 }
 
+/** True when running inside a wallet's in-app browser (no web push / SW support). */
+export function isInWalletBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Phantom|Solflare|Backpack|MetaMask|CoinbaseWallet|Trust|imToken|TokenPocket/i.test(navigator.userAgent || '');
+}
+
 /** Shorten an address for display: `7xKa…9fQ2`. */
 export function shortAddress(address: string, lead = 4, tail = 4): string {
   if (address.length <= lead + tail) return address;

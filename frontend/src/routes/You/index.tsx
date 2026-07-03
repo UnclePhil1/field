@@ -3,6 +3,7 @@ import { useAppStore } from '../../app/AppStore';
 import { fetchRecentCalls } from '../../lib/api';
 import { StreakMeter } from '../../features/streak/StreakMeter';
 import { NotificationSettings } from '../../features/notifications/NotificationSettings';
+import { AccountSettings } from '../../features/account/AccountSettings';
 import { StatLabel } from '../../components/StatLabel';
 import { Wordmark } from '../../components/AppBar';
 import { Button } from '../../components/Button';
@@ -47,8 +48,9 @@ export function You() {
         </Button>
       </section>
 
-      {/* notifications */}
-      <div className="mt-5">
+      {/* account + notifications */}
+      <div className="mt-5 flex flex-col gap-4">
+        <AccountSettings />
         <NotificationSettings />
       </div>
 

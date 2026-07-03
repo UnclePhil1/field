@@ -3,6 +3,7 @@ import { useNotifications } from '../../lib/push/useNotifications';
 import { pushApi, type NotificationPreferences } from '../../lib/push/pushApi';
 import { StatLabel } from '../../components/StatLabel';
 import { Button } from '../../components/Button';
+import { isInWalletBrowser } from '../../lib/wallet';
 
 const DEFAULTS: NotificationPreferences = {
   enabled: true,
@@ -31,7 +32,22 @@ export function NotificationSettings() {
     return (
       <section className="rounded-card border border-edge bg-turf p-4">
         <StatLabel>Notifications</StatLabel>
-        <p className="mt-2 text-sm text-muted">Push notifications aren’t available in this browser.</p>
+        {isInWalletBrowser() ? (
+          <div className="mt-2">
+            <p className="text-sm font-semibold text-chalk-dim">You’re in a wallet’s in-app browser.</p>
+            <p className="mt-1 text-xs text-muted">Notifications need a normal browser. Open Field in Chrome or Safari.</p>
+            <Button
+              variant="turf"
+              size="sm"
+              className="mt-2"
+              onClick={() => navigator.clipboard?.writeText(window.location.origin).then(() => {}, () => {})}
+            >
+              Copy Field link
+            </Button>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Push notifications aren’t available in this browser.</p>
+        )}
       </section>
     );
   }

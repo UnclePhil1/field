@@ -25,7 +25,6 @@ export function RequireAuth() {
     );
   }
   if (status === 'guest') return <Navigate to={`/connect?redirect=${redirect}`} replace />;
-  if (status === 'needs-username') return <Navigate to={`/onboard?redirect=${redirect}`} replace />;
 
   return <AppShell />;
 }

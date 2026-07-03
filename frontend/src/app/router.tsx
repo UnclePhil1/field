@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RequireAuth } from '../components/RequireAuth';
 import { Landing } from '../routes/Landing';
 import { Connect } from '../routes/Connect';
-import { Onboard } from '../routes/Onboard';
 import { Lobby } from '../routes/Lobby';
 import { MatchRoom } from '../routes/MatchRoom';
 import { Leaderboard } from '../routes/Leaderboard';
@@ -17,7 +16,6 @@ export const router = createBrowserRouter([
   // Public landing (root) + wallet sign-up flow.
   { path: '/', element: <Landing /> },
   { path: '/connect', element: <Connect /> },
-  { path: '/onboard', element: <Onboard /> },
   // Authenticated platform — guarded by wallet + username. Home is /play.
   {
     element: <RequireAuth />,

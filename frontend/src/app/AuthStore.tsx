@@ -12,13 +12,16 @@ import { supabase, callFunction } from '../lib/supabase';
 import type { WalletSignIn } from '../lib/wallet';
 
 /**
- * Auth lifecycle, backed by a real Supabase session:
- *   guest → (connect + sign) → needs-username → (set username) → ready
- *
- * The wallet signs a login message that the `wallet-auth` Edge Function
- * verifies before issuing the session. The session is persisted by supabase-js.
+ * Dual auth: a user may sign in with a WALLET or a USERNAME + password, and link
+ * the other later on their profile. A valid Supabase session === ready; there is
+ * no forced username step (wallet-only accounts display a shortened address).
  */
-export type AuthStatus = 'loading' | 'guest' | 'needs-username' | 'ready';
+export type AuthStatus = 'loading' | 'guest' | 'ready';
+
+interface ProfileResp {
+  session: Session;
+  profile: { username: string | null; wallet: string | null };
+}
 
 interface AuthValue {
   status: AuthStatus;
@@ -27,10 +30,16 @@ interface AuthValue {
   username: string | null;
   connecting: boolean;
   error: string | null;
-  /** exchange a signed login message for a Supabase session */
-  authenticate: (signed: WalletSignIn) => Promise<void>;
+  /** wallet register/login (signed message → wallet-auth) */
+  authenticateWallet: (signed: WalletSignIn) => Promise<void>;
+  registerUsername: (username: string, password: string) => Promise<void>;
+  loginUsername: (username: string, password: string) => Promise<void>;
+  /** link a verified wallet to the current account */
+  linkWallet: (signed: WalletSignIn) => Promise<void>;
+  /** add/change the username on the current account */
   setUsername: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -43,18 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load a profile row for the signed-in user.
   const loadProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('wallet, username')
-      .eq('id', userId)
-      .maybeSingle();
+    const { data } = await supabase.from('profiles').select('wallet, username').eq('id', userId).maybeSingle();
     setWallet(data?.wallet ?? null);
     setUsernameState(data?.username ?? null);
   }, []);
 
-  // Hydrate from any persisted session, then track auth changes.
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
@@ -72,37 +75,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [loadProfile]);
 
-  const authenticate = useCallback(async (signed: WalletSignIn) => {
-    setConnecting(true);
-    setError(null);
-    try {
-      const { session: newSession, profile } = await callFunction<{
-        session: Session;
-        profile: { username: string | null; wallet: string };
-      }>('wallet-auth', signed);
-      await supabase.auth.setSession({
-        access_token: newSession.access_token,
-        refresh_token: newSession.refresh_token,
-      });
-      setSession(newSession);
-      setWallet(profile.wallet);
-      setUsernameState(profile.username);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not sign in');
-      throw e;
-    } finally {
-      setConnecting(false);
-    }
+  // Common: apply a session returned by an auth Edge Function.
+  const applySession = useCallback(async (resp: ProfileResp) => {
+    await supabase.auth.setSession({
+      access_token: resp.session.access_token,
+      refresh_token: resp.session.refresh_token,
+    });
+    setSession(resp.session);
+    setWallet(resp.profile.wallet);
+    setUsernameState(resp.profile.username);
   }, []);
+
+  const run = useCallback(
+    async (fn: () => Promise<void>) => {
+      setConnecting(true);
+      setError(null);
+      try {
+        await fn();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Something went wrong');
+        throw e;
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [],
+  );
+
+  const authenticateWallet = useCallback(
+    (signed: WalletSignIn) => run(async () => applySession(await callFunction<ProfileResp>('wallet-auth', signed))),
+    [run, applySession],
+  );
+
+  const registerUsername = useCallback(
+    (u: string, password: string) =>
+      run(async () => applySession(await callFunction<ProfileResp>('username-auth', { action: 'register', username: u, password }))),
+    [run, applySession],
+  );
+
+  const loginUsername = useCallback(
+    (u: string, password: string) =>
+      run(async () => applySession(await callFunction<ProfileResp>('username-auth', { action: 'login', username: u, password }))),
+    [run, applySession],
+  );
+
+  const linkWallet = useCallback(
+    (signed: WalletSignIn) =>
+      run(async () => {
+        await callFunction('link-wallet', signed);
+        setWallet(signed.wallet);
+      }),
+    [run],
+  );
 
   const setUsername = useCallback(
     async (name: string) => {
       if (!session) throw new Error('Not signed in');
       const trimmed = name.trim();
-      const { error: upErr } = await supabase
-        .from('profiles')
-        .update({ username: trimmed })
-        .eq('id', session.user.id);
+      const { error: upErr } = await supabase.from('profiles').update({ username: trimmed }).eq('id', session.user.id);
       if (upErr) {
         const msg = upErr.code === '23505' ? 'That username is taken.' : upErr.message;
         setError(msg);
@@ -114,20 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    // AppKit disconnect is handled by the caller (needs the hook); we clear the session.
     await supabase.auth.signOut();
     setSession(null);
     setWallet(null);
     setUsernameState(null);
   }, []);
 
-  const status: AuthStatus = loading
-    ? 'loading'
-    : !session
-      ? 'guest'
-      : !username
-        ? 'needs-username'
-        : 'ready';
+  const status: AuthStatus = loading ? 'loading' : session ? 'ready' : 'guest';
 
   const value = useMemo<AuthValue>(
     () => ({
@@ -137,11 +160,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username,
       connecting,
       error,
-      authenticate,
+      authenticateWallet,
+      registerUsername,
+      loginUsername,
+      linkWallet,
       setUsername,
       signOut,
+      clearError: () => setError(null),
     }),
-    [status, session, wallet, username, connecting, error, authenticate, setUsername, signOut],
+    [status, session, wallet, username, connecting, error, authenticateWallet, registerUsername, loginUsername, linkWallet, setUsername, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

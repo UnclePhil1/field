@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.push]
 verify_jwt = false
+
+[functions.username-auth]
+verify_jwt = false
+
+[functions.link-wallet]
+verify_jwt = false

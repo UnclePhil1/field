@@ -45,7 +45,7 @@ export function WalletChip() {
   const navigate = useNavigate();
   const { wallet, username, signOut } = useAuth();
   const { disconnect } = useDisconnect();
-  if (!wallet) return null;
+  if (!wallet && !username) return null;
 
   async function handleSignOut() {
     await signOut();
@@ -57,14 +57,15 @@ export function WalletChip() {
     navigate('/', { replace: true });
   }
 
+  const label = username ? `@${username}` : wallet ? shortAddress(wallet) : 'Account';
   return (
     <button
       onClick={handleSignOut}
-      title="Disconnect wallet"
+      title="Sign out"
       className="inline-flex items-center gap-1.5 rounded-full border border-edge bg-turf-2 px-2.5 py-1 text-xs font-semibold text-chalk-dim transition-colors hover:border-grass/60 hover:text-chalk"
     >
       <WalletIcon size={14} />
-      <span className="tabular">{username ? `@${username}` : shortAddress(wallet)}</span>
+      <span className="tabular">{label}</span>
     </button>
   );
 }
