@@ -1,6 +1,5 @@
-// In-app notification inbox — always-on (no external service). Rows are pushed to
-// the client via Supabase Realtime. `notifyAll` also fans the same message out to
-// the optional FCM OS-push and Telegram channels.
+// In-app inbox rows (shown live via Realtime). notifyAll also forwards the same
+// message to push and Telegram.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { fcmEnabled, notifyUser } from './fcm.ts';
 import { sendTelegram } from './telegram.ts';
@@ -22,11 +21,7 @@ export async function notifyInbox(db: SupabaseClient, userId: string, n: InboxPa
   });
 }
 
-/**
- * Deliver a personal notification across every enabled channel: the in-app inbox
- * (always), FCM push (if configured), and Telegram (if the user linked it). Each
- * channel is best-effort — one failing never blocks the others.
- */
+/** Send one notification to every channel the user has: inbox, push, Telegram. */
 export async function notifyAll(db: SupabaseClient, userId: string, n: InboxPayload): Promise<void> {
   await notifyInbox(db, userId, n).catch(() => {});
   if (fcmEnabled) {

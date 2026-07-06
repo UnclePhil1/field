@@ -1,13 +1,12 @@
-// Telegram Bot API sender. Free + unlimited for bot-initiated messages to any
-// user who has started the bot. Set TELEGRAM_BOT_TOKEN (from @BotFather) as an
-// Edge Function secret to activate; APP_URL makes in-app links absolute.
+// Sends messages through the Telegram bot. Needs the TELEGRAM_BOT_TOKEN secret;
+// APP_URL turns in-app paths into full links.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? '';
 const APP_URL = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '');
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-/** True only when the bot token is configured — gate dispatch on this. */
+/** True only when the bot token is set. */
 export const telegramEnabled = !!BOT_TOKEN;
 
 export interface TgPayload {
@@ -26,7 +25,7 @@ function absolute(url?: string): string | undefined {
   return APP_URL ? `${APP_URL}${url.startsWith('/') ? '' : '/'}${url}` : undefined;
 }
 
-/** Low-level: send an HTML message to a chat_id. Prunes the link on block/invalid. */
+/** Send an HTML message to a chat. Drops the saved link if the user blocked the bot. */
 export async function sendToChat(db: SupabaseClient, chatId: string, text: string, url?: string): Promise<boolean> {
   if (!telegramEnabled) return false;
   const link = absolute(url);
@@ -43,7 +42,7 @@ export async function sendToChat(db: SupabaseClient, chatId: string, text: strin
     }),
   });
   if (!res.ok) {
-    // 403 = user blocked the bot; 400 = chat gone → drop the dead link.
+    // User blocked the bot or the chat is gone — remove the dead link.
     if (res.status === 403 || res.status === 400) {
       await db.from('telegram_links').delete().eq('chat_id', chatId);
     }

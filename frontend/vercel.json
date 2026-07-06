@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/match/:id", "destination": "/api/share" },
+    { "source": "/replay/:id", "destination": "/api/share" },
+    { "source": "/tournaments/:id", "destination": "/api/share" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

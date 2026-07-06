@@ -1,9 +1,7 @@
-// telegram — user-facing link management for the Telegram notification channel.
-//   POST /telegram/link    → mint a one-time code + deep link to start the bot
-//   GET  /telegram/status  → { connected, tg_username }
-//   POST /telegram/unlink  → disconnect this account's Telegram
-// Auth is the caller's Supabase session (getUser). Sends themselves are done by
-// the engine/tournaments functions via the service role.
+// Manages a user's Telegram connection.
+//   POST /telegram/link    -> one-time code + link to open the bot
+//   GET  /telegram/status  -> { connected, tg_username }
+//   POST /telegram/unlink  -> disconnect
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -11,7 +9,6 @@ const BOT_USERNAME = (Deno.env.get('TELEGRAM_BOT_USERNAME') ?? '').replace(/^@/,
 const CODE_TTL_MS = 15 * 60 * 1000;
 
 function newCode(): string {
-  // URL-safe, unambiguous, short enough to type after /start.
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const bytes = crypto.getRandomValues(new Uint8Array(8));
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
@@ -40,7 +37,7 @@ Deno.serve(async (req) => {
 
   if (req.method === 'POST' && path === '/link') {
     if (!BOT_USERNAME) return json({ error: 'Telegram bot not configured' }, 503);
-    // Reuse an unexpired code if one exists so rapid taps don't pile up rows.
+    // Clear old codes so taps don't pile up rows.
     await db.from('telegram_link_codes').delete().eq('user_id', user.id);
     const code = newCode();
     const expires_at = new Date(Date.now() + CODE_TTL_MS).toISOString();

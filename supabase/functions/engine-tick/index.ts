@@ -121,11 +121,7 @@ function spotFor(kind: 'goal' | 'card' | 'corner', side: 'home' | 'away'): { x: 
 }
 
 
-/**
- * Users who care about a given match = anyone who has placed a prediction on it,
- * plus anyone following it in their notification preferences. Used to target
- * match-event broadcasts (goals/cards/corners) instead of blasting everyone.
- */
+// Users to alert for a match: anyone who has played it or is following it.
 async function interestedUsers(db: any, matchId: string): Promise<string[]> {
   const set = new Set<string>();
   const { data: cards } = await db.from('prediction_cards').select('id').eq('match_id', matchId);
@@ -581,8 +577,7 @@ Deno.serve(async (req) => {
           baseline_stat: baseline ?? 0,
         });
 
-        // Prediction ping — a fresh card is open (~every card window, so roughly
-        // one every few minutes) to those playing/following this match.
+        // A fresh card is open — tell the people playing or following this match.
         if (telegramEnabled) {
           const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.my_play?.new_card !== false);
           await broadcastTelegram(db, fans, {
