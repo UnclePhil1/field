@@ -31,3 +31,12 @@ verify_jwt = false
 # Public webhook hit by Telegram's servers — secured via the secret-token header.
 [functions.telegram-webhook]
 verify_jwt = false
+
+[functions.squads]
+verify_jwt = false
+
+[functions.match-predict]
+verify_jwt = false
+
+[functions.chat]
+verify_jwt = false

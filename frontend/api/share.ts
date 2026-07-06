@@ -97,11 +97,22 @@ async function tournamentCard(id: string): Promise<Card | null> {
   return { title: `${t.title} — Prediction Battle`, description, image: p.toString() };
 }
 
-async function resolve(pathname: string): Promise<Card> {
+// A brag card is built purely from query params (no DB) — the win/streak the
+// player wants to show off.
+function bragCard(sp: URLSearchParams): Card {
+  const title = (sp.get('title') || 'Called it on FanField').slice(0, 80);
+  const sub = (sp.get('sub') || '').slice(0, 90);
+  const tag = (sp.get('tag') || '').slice(0, 20);
+  const p = new URLSearchParams({ type: 'brag', title, sub, tag });
+  return { title, description: sub || 'Play along the match on FanField.', image: p.toString() };
+}
+
+async function resolve(pathname: string, search: URLSearchParams): Promise<Card> {
   const parts = pathname.split('/').filter(Boolean); // ["match","123"]
   const [seg, id] = parts;
   let card: Card | null = null;
   try {
+    if (seg === 'brag') return bragCard(search);
     if (seg === 'match' && id) card = await matchCard(id, 'match');
     else if (seg === 'replay' && id) card = await matchCard(id, 'replay');
     else if (seg === 'tournaments' && id) card = await tournamentCard(id);
@@ -112,10 +123,11 @@ async function resolve(pathname: string): Promise<Card> {
 }
 
 export default async function handler(req: any, res: any) {
-  const pathname = (req.url || '/').split('?')[0];
+  const u = new URL(req.url || '/', CANONICAL);
+  const pathname = u.pathname;
   const pageUrl = `${CANONICAL}${req.url || ''}`;
 
-  const card = await resolve(pathname);
+  const card = await resolve(pathname, u.searchParams);
   const image = `${CANONICAL}/api/og?${card.image}`;
 
   let html = '';

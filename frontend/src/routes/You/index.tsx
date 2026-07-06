@@ -10,6 +10,7 @@ import { Wordmark } from '../../components/AppBar';
 import { Button } from '../../components/Button';
 import { CheckIcon, CoinIcon, CrossIcon, ShareIcon } from '../../components/Icons';
 import { formatCoins, formatPoints } from '../../lib/format';
+import { buildBragUrl } from '../../lib/brag';
 import type { SettledCall } from '../../types';
 
 export function You() {
@@ -23,6 +24,22 @@ export function You() {
   const calls = recentCalls.length ? recentCalls : history;
   const wins = calls.filter((c) => c.result === 'win').length;
   const hitRate = calls.length ? Math.round((wins / calls.length) * 100) : 0;
+
+  async function shareStreak() {
+    const url = buildBragUrl({
+      title: `${streak}-match streak on FanField`,
+      sub: `${multiplier}× multiplier · ${hitRate}% hit rate`,
+      tag: 'Streak',
+    });
+    const text = `I'm on a ${streak}-match streak on FanField`;
+    try {
+      if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+        await navigator.share({ title: 'FanField', text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+    } catch { /* cancelled */ }
+  }
 
   return (
     <div className="mx-auto w-full max-w-play px-4 py-5">
@@ -44,8 +61,8 @@ export function You() {
           <Stat label="Hit rate" value={`${hitRate}%`} />
           <Stat label="Calls" value={`${calls.length}`} />
         </div>
-        <Button variant="turf" size="md" fullWidth className="mt-4" leftIcon={<ShareIcon size={16} />} disabled title="Coming soon">
-          Share my streak card — coming soon
+        <Button variant="turf" size="md" fullWidth className="mt-4" leftIcon={<ShareIcon size={16} />} onClick={shareStreak}>
+          Share my streak card
         </Button>
       </section>
 

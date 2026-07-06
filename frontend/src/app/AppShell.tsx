@@ -3,6 +3,7 @@ import { AppBar } from '../components/AppBar';
 import { SideNav } from '../components/SideNav';
 import { BottomNav } from '../components/BottomNav';
 import { PushToast } from '../components/PushToast';
+import { FloatingChat } from '../features/chat/FloatingChat';
 
 /**
  * Mobile-first: AppBar on top, fixed BottomNav.
@@ -25,6 +26,7 @@ export function AppShell() {
         </div>
       </div>
       <BottomNav />
+      <FloatingChat />
       <PushToast />
     </div>
   );

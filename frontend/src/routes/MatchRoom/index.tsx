@@ -7,6 +7,8 @@ import { TrophyIcon, PlayIcon } from '../../components/Icons';
 import { ShareButton } from '../../components/ShareButton';
 import { LivePanel } from '../../features/match/LivePanel';
 import { RecentCalls } from '../../features/match/RecentCalls';
+import { CallScoreCard } from '../../features/match/CallScoreCard';
+import { SquadPanel } from '../../features/squad/SquadPanel';
 import { PredictionCard } from '../../features/prediction/PredictionCard';
 import { LeaderboardTable } from '../../features/board/LeaderboardTable';
 import { StatLabel } from '../../components/StatLabel';
@@ -104,6 +106,8 @@ export function MatchRoom() {
           <LeaderboardTable players={thisMatchBoard} compact />
         </div>
 
+        <CallScoreCard match={match} />
+
         {card && (
           <PredictionCard
             card={card}
@@ -113,6 +117,8 @@ export function MatchRoom() {
             paused={match.phase === 'HT'}
           />
         )}
+
+        <SquadPanel matchId={match.id} />
       </aside>
 
       <Suspense fallback={null}>

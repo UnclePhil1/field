@@ -1,5 +1,6 @@
 import type { Receipt as ReceiptType, SettledCall } from '../../types';
 import { StatLabel } from '../../components/StatLabel';
+import { BragButton } from '../../components/BragButton';
 import { CheckIcon, CrossIcon } from '../../components/Icons';
 import { formatPoints } from '../../lib/format';
 
@@ -37,6 +38,15 @@ export function RecentCalls({ calls, onViewProof }: RecentCallsProps) {
               <span className={['tabular text-sm font-bold', win ? 'text-grass' : 'text-muted'].join(' ')}>
                 {formatPoints(c.points)}
               </span>
+              {win && (
+                <BragButton
+                  title={`Called it: ${c.question}`}
+                  sub="Nailed the call on FanField"
+                  tag="Called it"
+                  label="Brag"
+                  className="hidden sm:inline-flex"
+                />
+              )}
               <button
                 onClick={() => onViewProof(c.receipt)}
                 className="rounded-full px-2 py-1 text-[11px] font-semibold text-chalk-dim hover:text-grass"

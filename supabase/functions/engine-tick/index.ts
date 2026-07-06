@@ -316,6 +316,32 @@ Deno.serve(async (req) => {
             }).catch(() => {});
           }
         }
+        // Settle "Call the Score": exact score pays big, correct result pays small.
+        const fh = statOf(latest, 1) ?? 0;
+        const fa = statOf(latest, 2) ?? 0;
+        const realResult = fh > fa ? 'home' : fh < fa ? 'away' : 'draw';
+        const { data: callRows } = await db
+          .from('match_predictions')
+          .select('user_id, home_goals, away_goals, side')
+          .eq('match_id', m.id)
+          .eq('settled', false);
+        for (const c of callRows ?? []) {
+          const exact = c.home_goals === fh && c.away_goals === fa;
+          const guess = c.home_goals > c.away_goals ? 'home' : c.home_goals < c.away_goals ? 'away' : 'draw';
+          const points = exact ? 250 : guess === realResult ? 75 : 0;
+          if (points > 0) {
+            const { data: prof } = await db.from('profiles').select('coins').eq('id', c.user_id).maybeSingle();
+            if (prof) await db.from('profiles').update({ coins: prof.coins + points }).eq('id', c.user_id);
+            await notifyAll(db, c.user_id, {
+              title: exact ? `🎯 Exact score! +${points}` : `✅ You called the result — +${points}`,
+              body: `${m.home_code} ${fh}–${fa} ${m.away_code}`,
+              url: `/match/${m.id}`,
+              kind: 'call-score',
+            }).catch(() => {});
+          }
+          await db.from('match_predictions').update({ settled: true, points }).eq('match_id', m.id).eq('user_id', c.user_id);
+        }
+
         // Match ended normally → finalize standings for its tournaments.
         const { data: tours } = await db
           .from('tournaments')
@@ -501,9 +527,18 @@ Deno.serve(async (req) => {
         }, { onConflict: 'card_id,user_id' });
 
         // notify "your call settled" across every channel (inbox + push + Telegram).
+        // Both outcomes include the streak so players feel the run build or break.
         if (await prefAllows(db, callRow.user_id, (p) => p.my_play?.settled !== false)) {
           const title = r.won ? `⚽ Your call hit — +${r.payout}` : '✕ Not this time';
-          await notifyAll(db, callRow.user_id, { title, body: card.question, url: `/match/${m.id}`, kind: 'settled' }).catch(() => {});
+          const streakLine = r.won
+            ? `🔥 Streak: ${r.newStreak}${r.newStreak > 1 ? ` (${(1 + r.newStreak * 0.1).toFixed(1)}× payout)` : ''}`
+            : prof.streak > 0 ? `💔 Streak reset (was ${prof.streak}) — start a new run.` : 'No points this time.';
+          await notifyAll(db, callRow.user_id, {
+            title,
+            body: `${card.question}\n${streakLine}`,
+            url: `/match/${m.id}`,
+            kind: 'settled',
+          }).catch(() => {});
         }
       }
 
@@ -524,11 +559,23 @@ Deno.serve(async (req) => {
         // void → no change; else odds-weighted (no per-tournament streak in v1). TODO: streak.
         let delta = 0;
         if (outcome != null) delta = tc.pick === outcome ? Math.round(tc.stake * card.multiplier) : -tc.stake;
+        const newPoints = Math.max(0, part.points + delta);
         await db.from('tournament_participants')
-          .update({ points: Math.max(0, part.points + delta) })
+          .update({ points: newPoints })
           .eq('tournament_id', tc.tournament_id)
           .eq('user_id', tc.user_id);
         await db.from('tournament_predictions').update({ settled: true }).eq('id', tc.id);
+
+        // tell the tournament player how their stack moved.
+        if (outcome != null && await prefAllows(db, tc.user_id, (p) => p.my_play?.settled !== false)) {
+          const won = tc.pick === outcome;
+          await notifyAll(db, tc.user_id, {
+            title: won ? `🏆 Tournament call hit — +${delta}` : `✕ Tournament call missed — ${delta}`,
+            body: `${card.question}\nStack: ${newPoints.toLocaleString('en-US')} pts`,
+            url: `/tournaments/${tc.tournament_id}`,
+            kind: 'settled',
+          }).catch(() => {});
+        }
       }
     }
 

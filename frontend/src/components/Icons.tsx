@@ -29,6 +29,12 @@ export const PitchIcon = (p: IconProps) => (
   </svg>
 );
 
+export const ChatIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4-.8L3 20.5l1.4-4a8.4 8.4 0 0 1-.8-3.5A8.4 8.4 0 0 1 12 3.5a8.4 8.4 0 0 1 9 8z" />
+  </svg>
+);
+
 export const PlayIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <circle cx="12" cy="12" r="9" />

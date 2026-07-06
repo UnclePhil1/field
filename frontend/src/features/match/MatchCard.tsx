@@ -1,12 +1,27 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Match } from '../../types';
 import { Chip } from '../../components/Chip';
 import { Flag } from '../../components/Flag';
 import { ArrowIcon } from '../../components/Icons';
 import { phaseLabel, untilKickoff } from '../../lib/format';
+import { matchPredictApi } from '../../lib/matchPredictApi';
 
 export function MatchCard({ match }: { match: Match }) {
   const live = match.status === 'live';
+  const [fanWar, setFanWar] = useState<{ home: number; away: number } | null>(null);
+
+  // Teaser: how the crowd is leaning (from Call the Score side-picks). Best-effort.
+  useEffect(() => {
+    let on = true;
+    matchPredictApi.get(match.id)
+      .then((r) => { if (on) setFanWar(r.fanWar); })
+      .catch(() => {});
+    return () => { on = false; };
+  }, [match.id]);
+
+  const fwTotal = fanWar ? fanWar.home + fanWar.away : 0;
+  const fwHomePct = fwTotal ? Math.round((fanWar!.home / fwTotal) * 100) : 50;
 
   // Only live matches are playable/clickable. Upcoming matches render as a
   // static card so users can't enter a room that hasn't kicked off
@@ -47,6 +62,20 @@ export function MatchCard({ match }: { match: Match }) {
         <TeamRow code={match.home.code} name={match.home.name} country={match.home.country} score={live ? match.homeScore : undefined} />
         <TeamRow code={match.away.code} name={match.away.name} country={match.away.country} score={live ? match.awayScore : undefined} reverse />
       </div>
+
+      {fwTotal > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wide">
+            <span className="text-grass">{match.home.code} {fwHomePct}%</span>
+            <span className="text-muted">Fan War</span>
+            <span className="text-flare-2">{100 - fwHomePct}% {match.away.code}</span>
+          </div>
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-pitch-deep">
+            <div className="h-full bg-grass" style={{ width: `${fwHomePct}%` }} />
+            <div className="h-full bg-flare-2" style={{ width: `${100 - fwHomePct}%` }} />
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
         <span className="tabular text-xs text-muted">

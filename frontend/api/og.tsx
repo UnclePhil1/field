@@ -51,7 +51,11 @@ export default async function handler(req: Request) {
   let pill: { text: string; bg: string; fg: string; dot?: boolean };
   let sub: string;
 
-  if (type === 'default' || (!home && !away && !title)) {
+  if (type === 'brag') {
+    headline = title || 'Called it.';
+    pill = { text: (q(url, 'tag') || 'FANFIELD').toUpperCase(), bg: 'rgba(57,211,83,0.14)', fg: GRASS };
+    sub = q(url, 'sub');
+  } else if (type === 'default' || (!home && !away && !title)) {
     headline = 'Call it, live.';
     pill = { text: 'FIELD', bg: 'rgba(57,211,83,0.14)', fg: GRASS };
     sub = 'Predict the next 5 minutes · provably fair on Solana';

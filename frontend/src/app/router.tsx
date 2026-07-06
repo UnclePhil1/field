@@ -5,6 +5,8 @@ import { Connect } from '../routes/Connect';
 import { Lobby } from '../routes/Lobby';
 import { Live } from '../routes/Live';
 import { MatchRoom } from '../routes/MatchRoom';
+import { SquadJoin } from '../routes/Squad';
+import { Brag } from '../routes/Brag';
 import { Replay } from '../routes/Replay';
 import { ReplayMatch } from '../routes/Replay/Match';
 import { Leaderboard } from '../routes/Leaderboard';
@@ -19,6 +21,9 @@ export const router = createBrowserRouter([
   // Public landing (root) + wallet sign-up flow.
   { path: '/', element: <Landing /> },
   { path: '/connect', element: <Connect /> },
+  // Public share targets (viewable without an account).
+  { path: '/squad/:code', element: <SquadJoin /> },
+  { path: '/brag', element: <Brag /> },
   // Authenticated platform — guarded by wallet + username. Home is /play.
   {
     element: <RequireAuth />,

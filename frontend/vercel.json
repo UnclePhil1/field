@@ -4,6 +4,7 @@
     { "source": "/match/:id", "destination": "/api/share" },
     { "source": "/replay/:id", "destination": "/api/share" },
     { "source": "/tournaments/:id", "destination": "/api/share" },
+    { "source": "/brag", "destination": "/api/share" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
