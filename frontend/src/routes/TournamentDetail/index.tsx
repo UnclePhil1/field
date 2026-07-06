@@ -28,6 +28,8 @@ export function TournamentDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
   const [showAddr, setShowAddr] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     const tour = await tournamentApi.getById(id);
@@ -49,6 +51,7 @@ export function TournamentDetail() {
   const myPayout = payouts.find((p) => p.isMe);
   const isWinnerAwaitingAddress = myPayout?.status === 'awaiting_address';
   const action = actionFor(t, joined, !!isWinnerAwaitingAddress);
+  const canManage = !!userId && userId === t.hostUserId && t.status === 'upcoming';
 
   async function doJoin() {
     setBusy(true);
@@ -61,6 +64,18 @@ export function TournamentDetail() {
       setError(e instanceof Error ? e.message : 'Could not join');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function doDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await tournamentApi.remove(id);
+      navigate('/tournaments');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete');
+      setDeleting(false);
     }
   }
 
@@ -114,6 +129,12 @@ export function TournamentDetail() {
             <p className="mt-2 text-xs text-muted">
               Hosted by <span className="tabular font-semibold text-chalk-dim">{shortWallet(t.hostPayoutWallet)}</span>
             </p>
+            {canManage && (
+              <div className="mt-3 flex gap-2">
+                <Button variant="turf" size="sm" onClick={() => navigate(`/tournaments/${id}/edit`)}>Edit</Button>
+                <Button variant="turf" size="sm" className="text-flare-2" onClick={() => setShowDelete(true)}>Delete</Button>
+              </div>
+            )}
           </div>
 
           {/* match panel */}
@@ -214,6 +235,21 @@ export function TournamentDetail() {
           <div className="mt-5 flex gap-2">
             <Button variant="turf" fullWidth onClick={() => setShowJoin(false)} disabled={busy}>Cancel</Button>
             <Button variant="grass" fullWidth onClick={doJoin} disabled={busy}>{busy ? 'Joining…' : 'Join free'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* delete confirm (host, before kickoff) */}
+      <Modal open={showDelete} onClose={() => setShowDelete(false)} labelledBy="del-title">
+        <div className="p-5">
+          <h2 id="del-title" className="text-lg font-extrabold tracking-display text-chalk">Delete this tournament?</h2>
+          <p className="mt-2 text-sm text-chalk-dim">
+            This removes the battle and any points players have earned in it. It can’t be undone. No prize is owed because the match hasn’t started.
+          </p>
+          {error && <p className="mt-2 text-xs text-flare-2">{error}</p>}
+          <div className="mt-5 flex gap-2">
+            <Button variant="turf" fullWidth onClick={() => setShowDelete(false)} disabled={deleting}>Cancel</Button>
+            <Button variant="flare" fullWidth onClick={doDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</Button>
           </div>
         </div>
       </Modal>

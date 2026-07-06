@@ -3,6 +3,7 @@ import { RequireAuth } from '../components/RequireAuth';
 import { Landing } from '../routes/Landing';
 import { Connect } from '../routes/Connect';
 import { Lobby } from '../routes/Lobby';
+import { Live } from '../routes/Live';
 import { MatchRoom } from '../routes/MatchRoom';
 import { Replay } from '../routes/Replay';
 import { ReplayMatch } from '../routes/Replay/Match';
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: '/play', element: <Lobby /> },
+      { path: '/live', element: <Live /> },
       { path: '/match/:id', element: <MatchRoom /> },
       { path: '/replay', element: <Replay /> },
       { path: '/replay/:id', element: <ReplayMatch /> },
@@ -30,6 +32,7 @@ export const router = createBrowserRouter([
       { path: '/tournaments/create', element: <TournamentCreate /> },
       { path: '/tournaments/mine', element: <MyTournaments /> },
       { path: '/tournaments/:id', element: <TournamentDetail /> },
+      { path: '/tournaments/:id/edit', element: <TournamentCreate /> },
       { path: '/tournaments/:id/payouts', element: <TournamentPayouts /> },
       { path: '/board', element: <Leaderboard /> },
       { path: '/you', element: <You /> },

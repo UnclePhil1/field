@@ -12,12 +12,12 @@ import {
 } from '../../components/Icons';
 
 const FEATURES = [
-  { Icon: FlameIcon, title: 'Call the next 5 minutes', body: 'Fast yes/no cards on goals, cards and corners. Tap before they lock.' },
+  { Icon: FlameIcon, title: 'Call the next 5 minutes', body: 'Fast yes/no Flash Pools on goals, cards and corners. Tap before they lock.' },
   { Icon: CoinIcon, title: 'Build a streak', body: 'Win to grow your stack and your multiplier. A long run is worth protecting.' },
   { Icon: ShieldIcon, title: 'Provably fair', body: 'Every result settles against live data anchored on Solana. Check the receipt.' },
   { Icon: BoardIcon, title: 'Climb the board', body: 'Live per-match and tournament-long leaderboards across all 104 games.' },
-  { Icon: TrophyIcon, title: 'Prediction battles', body: 'Free-entry tournaments with real USDC prizes paid by the host — verified on-chain.' },
-  { Icon: ArrowIcon, title: 'Free to play', body: 'Free coins that refill daily. A game, not a betting site. No signup wall to start.' },
+  { Icon: TrophyIcon, title: 'Flash Pool battles', body: 'Free-entry tournaments with real USDC prizes paid by the host — verified on-chain.' },
+  { Icon: ArrowIcon, title: 'Free to play', body: 'Free coins that refill daily. Jump straight in — no signup wall to start.' },
 ];
 
 export function Landing() {
@@ -43,20 +43,19 @@ export function Landing() {
       {/* hero */}
       <section className="mx-auto grid w-full max-w-[1100px] items-center gap-8 px-5 py-8 lg:grid-cols-2 lg:py-16">
         <div>
-          <p className="eyebrow text-grass">The live second screen for the World Cup</p>
+          <p className="eyebrow text-grass">Your live World Cup companion</p>
           <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-display text-chalk sm:text-5xl">
             Don’t just watch the match —{' '}
             <span className="text-grass">call it, live.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-chalk-dim">
-            Open Field during a match and predict the next five minutes. Build a streak, climb the
-            leaderboard, and watch every result settle against data you can actually verify on Solana.
+            Open Field during a match and play a Flash Pool on the next five minutes. Build a streak, climb
+            the leaderboard, and watch every result settle against data you can actually verify on Solana.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link to={ctaTo}>
               <Button variant="grass" size="lg" leftIcon={<ArrowIcon size={18} />}>{ctaLabel}</Button>
             </Link>
-            {/* <span className="text-xs text-muted">Free to play · provably fair · not a betting site</span> */}
           </div>
         </div>
 
@@ -75,8 +74,8 @@ export function Landing() {
       <section className="mx-auto w-full max-w-[1100px] px-5 py-6">
         <div className="rounded-card-lg border border-edge bg-turf p-6 text-center">
           <p className="mx-auto max-w-2xl text-lg font-semibold leading-relaxed text-chalk">
-            Field turns the phone already in your hand into a fast, social prediction game. And it proves
-            every result is real using match data cryptographically anchored on Solana.
+            Field turns the phone already in your hand into a fast, social game. Every round is a Flash Pool —
+            a quick call on the next moment of play — and each result is proven real with match data anchored on Solana.
           </p>
         </div>
       </section>
@@ -102,7 +101,7 @@ export function Landing() {
         <p className="eyebrow mb-4">How a round works</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            ['1', 'A card appears', 'A timed yes/no question about the next short stretch of play.'],
+            ['1', 'A Flash Pool opens', 'A timed yes/no call on the next short stretch of play.'],
             ['2', 'You make the call', 'Tap your side and stake before it locks.'],
             ['3', 'The feed settles it', 'You win or lose points — with a provably-fair receipt.'],
           ].map(([n, t, b]) => (
@@ -125,7 +124,7 @@ export function Landing() {
       </section>
 
       <footer className="mx-auto w-full max-w-[1100px] px-5 py-8 text-center text-xs text-muted">
-        Field · Built on TxLINE · Anchored on Solana · A free skill game, not a betting product.
+        Field · Built on TxLINE · Anchored on Solana
       </footer>
     </div>
   );

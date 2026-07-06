@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { tournamentApi } from '../../lib/tournamentApi';
+import { supabase } from '../../lib/supabase';
 import { fetchMatches } from '../../lib/api';
 import { useAuth } from '../../app/AuthStore';
 import { StatLabel } from '../../components/StatLabel';
@@ -28,8 +29,11 @@ function presetFor(n: number, kind: 'even' | 'top-heavy' | 'wta'): number[] {
 
 export function TournamentCreate() {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
+  const isEdit = !!editId;
   const { wallet } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [loaded, setLoaded] = useState(!editId);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -43,11 +47,55 @@ export function TournamentCreate() {
   const [split, setSplit] = useState<number[]>(presetFor(3, 'top-heavy'));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchMatches().then((ms) => setMatches(ms.filter((m) => m.status === 'upcoming'))).catch(() => {});
   }, []);
-  useEffect(() => { if (wallet) setHostWallet(wallet); }, [wallet]);
+
+  // Edit mode: load the tournament once and prefill every field.
+  useEffect(() => {
+    if (!editId) return;
+    tournamentApi.getById(editId).then((t) => {
+      setTitle(t.title);
+      setDescription(t.description ?? '');
+      setBannerUrl(t.bannerUrl ?? '');
+      setMatchId(t.matchId);
+      setPrize(t.prize.total);
+      setHostWallet(t.hostPayoutWallet);
+      setCapacityType(t.capacity.type);
+      if (t.capacity.type === 'slots') setMaxSlots(t.capacity.max);
+      setWinnersCount(t.winnersCount);
+      setSplit(t.split);
+      setLoaded(true);
+    }).catch(() => { setError('Could not load this tournament'); setLoaded(true); });
+  }, [editId]);
+
+  async function onPickBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) { setError('Banner must be a PNG, JPG or WebP image'); return; }
+    if (file.size > 3 * 1024 * 1024) { setError('Banner must be under 3 MB'); return; }
+    setError(null);
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('tournament-banners')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('tournament-banners').getPublicUrl(path);
+      setBannerUrl(data.publicUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload the banner');
+    } finally {
+      setUploading(false);
+    }
+  }
+  useEffect(() => { if (wallet && !isEdit) setHostWallet(wallet); }, [wallet, isEdit]);
   useEffect(() => { setSplit((s) => resize(s, winnersCount)); }, [winnersCount]);
 
   const splitSum = split.reduce((a, n) => a + (Number(n) || 0), 0);
@@ -74,20 +122,22 @@ export function TournamentCreate() {
       capacity, winnersCount, split, startingPoints: 1000, joinCloses: 'kickoff',
     };
     try {
-      const t = await tournamentApi.create(input);
+      const t = isEdit ? await tournamentApi.update(editId!, input) : await tournamentApi.create(input);
       navigate(`/tournaments/${t.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create tournament');
+      setError(e instanceof Error ? e.message : isEdit ? 'Could not save changes' : 'Could not create tournament');
     } finally {
       setBusy(false);
     }
   }
 
+  if (!loaded) return <div className="mx-auto max-w-[680px] px-4 py-8 text-muted">Loading…</div>;
+
   return (
     <div className="mx-auto w-full max-w-[680px] px-4 py-5">
-      <Link to="/tournaments" className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-chalk">← Tournaments</Link>
-      <StatLabel className="ml-4">Host a battle</StatLabel>
-      <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">Create tournament</h1>
+      <Link to={isEdit ? `/tournaments/${editId}` : '/tournaments'} className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-chalk">← {isEdit ? 'Back' : 'Tournaments'}</Link>
+      <StatLabel className="ml-4">{isEdit ? 'Edit battle' : 'Host a battle'}</StatLabel>
+      <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">{isEdit ? 'Edit tournament' : 'Create tournament'}</h1>
 
       <div className="mt-5 flex flex-col gap-5">
         {/* basics */}
@@ -98,18 +148,26 @@ export function TournamentCreate() {
           <Field label={`Description (${description.length}/280)`}>
             <textarea value={description} maxLength={280} onChange={(e) => setDescription(e.target.value)} rows={3} className={inputCls} />
           </Field>
-          <Field label="Banner image URL (optional)">
-            <input value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} placeholder="https://…" className={inputCls} />
+          <Field label="Banner image (optional)">
+            <div className="flex gap-2">
+              <input value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} placeholder="Paste an image URL" className={`${inputCls} min-w-0 flex-1`} />
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickBanner} className="hidden" />
+              <Button type="button" variant="turf" size="md" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                {uploading ? 'Uploading…' : 'Upload'}
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-muted">Paste a link or upload from your device (PNG, JPG or WebP, up to 3 MB).</p>
           </Field>
           {bannerUrl && <img src={bannerUrl} alt="" className="h-28 w-full rounded-card border border-edge object-cover" />}
         </Section>
 
         {/* match */}
         <Section title="Match">
+          {isEdit && <p className="text-xs text-muted">The match can’t be changed. To use a different match, delete this tournament and create a new one.</p>}
           {matches.length === 0 ? (
             <p className="text-sm text-muted">No upcoming matches available to host on right now.</p>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className={['grid gap-2 sm:grid-cols-2', isEdit ? 'pointer-events-none opacity-70' : ''].join(' ')}>
               {matches.map((m) => (
                 <button key={m.id} onClick={() => setMatchId(m.id)} className={[
                   'rounded-card border px-3 py-2.5 text-left transition-colors',
@@ -151,7 +209,7 @@ export function TournamentCreate() {
 
         {/* winners + split */}
         <Section title="Winners & split">
-          <Field label="Number of winners (top-N)">
+          <Field label="Number of winners">
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((n) => (
                 <Toggle key={n} active={winnersCount === n} onClick={() => setWinnersCount(n)}>{n}</Toggle>
@@ -186,7 +244,7 @@ export function TournamentCreate() {
           {error && <p className="mt-2 text-xs text-flare-2">{error}</p>}
           {validation && <p className="mt-2 text-xs text-flare-2">{validation}</p>}
           <Button variant="grass" size="lg" fullWidth className="mt-4" disabled={!!validation || busy} onClick={submit}>
-            {busy ? 'Creating…' : 'Create tournament'}
+            {isEdit ? (busy ? 'Saving…' : 'Save changes') : (busy ? 'Creating…' : 'Create tournament')}
           </Button>
           <p className="mt-2 text-center text-[11px] text-muted">No wallet signature or fund lock — creating just publishes the contest.</p>
         </div>

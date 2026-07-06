@@ -36,10 +36,10 @@ function toTournament(r: any) {
 
 /* ------------------------------ validation ------------------------------- */
 // deno-lint-ignore no-explicit-any
-function validateCreate(b: any): string | null {
+function validateTournament(b: any, requireMatch: boolean): string | null {
   if (!b.title || String(b.title).length > 60) return 'Title is required (≤60 chars)';
   if (String(b.description ?? '').length > 280) return 'Description must be ≤280 chars';
-  if (!b.matchId) return 'A match is required';
+  if (requireMatch && !b.matchId) return 'A match is required';
   if (!isValidSolanaAddress(b.hostPayoutWallet ?? '')) return 'A valid Solana payout wallet is required';
   if (!(b.prize?.total > 0)) return 'Prize must be greater than 0';
   const wc = Number(b.winnersCount);
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
       const body = await req.json();
-      const err = validateCreate(body);
+      const err = validateTournament(body, true);
       if (err) return json({ error: err }, 400);
       const { data: match } = await db.from('matches').select('status').eq('id', body.matchId).maybeSingle();
       if (!match) return json({ error: 'match not found' }, 404);
@@ -134,6 +134,51 @@ Deno.serve(async (req) => {
     if (method === 'GET' && path.length === 1) {
       const { data } = await db.from('tournaments').select('*').eq('id', id).maybeSingle();
       return data ? json(toTournament(data)) : json({ error: 'not found' }, 404);
+    }
+
+    // PATCH /tournaments/:id  (host edits before kickoff)
+    if (method === 'PATCH' && path.length === 1) {
+      const user = await getUser(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { data: t } = await db.from('tournaments').select('host_user_id, status').eq('id', id).maybeSingle();
+      if (!t) return json({ error: 'not found' }, 404);
+      if (t.host_user_id !== user.id) return json({ error: 'only the host can edit this tournament' }, 403);
+      if (t.status !== 'upcoming') return json({ error: 'the match has started — this tournament can no longer be edited' }, 409);
+
+      const body = await req.json();
+      const verr = validateTournament(body, false);
+      if (verr) return json({ error: verr }, 400);
+      const { data, error } = await db
+        .from('tournaments')
+        .update({
+          title: body.title,
+          description: body.description ?? '',
+          banner_url: body.bannerUrl ?? '',
+          host_payout_wallet: body.hostPayoutWallet,
+          prize_total: body.prize.total,
+          capacity_type: body.capacity?.type ?? 'open',
+          capacity_max: body.capacity?.type === 'slots' ? body.capacity.max : null,
+          winners_count: body.winnersCount,
+          split: body.split,
+        })
+        .eq('id', id)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return json(toTournament(data));
+    }
+
+    // DELETE /tournaments/:id  (host deletes before kickoff)
+    if (method === 'DELETE' && path.length === 1) {
+      const user = await getUser(req);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const { data: t } = await db.from('tournaments').select('host_user_id, status').eq('id', id).maybeSingle();
+      if (!t) return json({ error: 'not found' }, 404);
+      if (t.host_user_id !== user.id) return json({ error: 'only the host can delete this tournament' }, 403);
+      if (t.status !== 'upcoming') return json({ error: 'the match has started — this tournament can no longer be deleted' }, 409);
+      const { error } = await db.from('tournaments').delete().eq('id', id);
+      if (error) throw error;
+      return json({ ok: true });
     }
 
     // GET /tournaments/:id/standings
