@@ -16,6 +16,7 @@ Live at **fanfield.xyz**
 
 ## Contents
 
+- [Brief technical documentation](#brief-technical-documentation)
 - [What you can do](#what-you-can-do)
 - [How a prediction works](#how-a-prediction-works)
 - [Tournaments (Prediction Battles)](#tournaments-prediction-battles)
@@ -30,6 +31,67 @@ Live at **fanfield.xyz**
 - [Project layout](#project-layout)
 
 ---
+
+## Brief technical documentation
+
+### Core idea
+
+Football is most fun when you have something riding on the next moment. FanField
+turns any live match into a fast, social game: players make short yes/no calls on
+the next goal, card, or corner, and every call is settled from a verifiable live
+data feed rather than by a house. Because the same feed decides every outcome, the
+result is identical for everyone and can be checked. On top of that sits a light
+social and rewards layer — streaks, squads, chat, and sponsor-funded tournaments —
+that keeps players coming back before, during, and after the whistle.
+
+### Business highlights
+
+- Free to play and not a betting product — players use points and coins, which
+  lowers the legal and trust barrier and widens the audience.
+- Built for one of the largest live audiences on earth (the World Cup), where the
+  gap between goals is exactly the attention FanField captures.
+- Tournaments create real stakes without FanField ever touching money: hosts fund
+  USDC prizes and pay winners directly, and each payment is verified on-chain. This
+  keeps the platform out of custody and compliance-heavy money flows.
+- Growth is built in: squad invites, shareable "brag" cards, and Telegram alerts
+  each turn one player into several.
+
+### Technical highlights
+
+- Real-data only, no mocks. All game state resolves from Supabase (Postgres,
+  Auth, Realtime, Edge Functions) and the TxLINE feed.
+- A single scheduled Edge Function (the "engine") runs every minute and is the
+  authority for the whole game: it syncs fixtures, advances live matches from the
+  feed clock and status, opens and settles prediction cards, updates coins and
+  streaks, finalizes tournament standings, and fans out notifications.
+- Verifiable settlement: cards resolve against the feed's stat values, and each
+  settled call keeps a receipt referencing the TxODDS oracle anchored on Solana.
+- Odds-aware pricing: when market odds are available, a card's payout multiplier is
+  derived from the implied win probability, so harder calls pay more.
+- The browser never holds a secret or talks to the feed. Row Level Security scopes
+  user data; all privileged writes run server-side with the service role.
+- Notifications fan out to three channels from one call — in-app inbox (Realtime),
+  browser push (FCM), and Telegram — each gated by user preference.
+
+### TxLINE endpoints used
+
+Access uses a short-lived guest JWT plus an API token, sent on every data request
+as a bearer token and an `X-Api-Token` header. All feed calls are server-side only.
+
+| Purpose | Method + endpoint |
+|---|---|
+| Start a guest session (JWT) | `POST /auth/guest/start` |
+| Activate the API token | `POST /api/token/activate` |
+| World Cup fixtures | `GET /api/fixtures/snapshot` |
+| Current score/state for a fixture | `GET /api/scores/snapshot/{fixtureId}` |
+| Live score/stat updates | `GET /api/scores/updates/{fixtureId}` |
+| Historical scores (replays, backfill) | `GET /api/scores/historical/{fixtureId}` |
+| Market odds for a fixture | `GET /api/odds/snapshot/{fixtureId}` |
+| Stat validation / proof for a receipt | `GET /api/scores/stat-validation?fixtureId={id}&seq={seq}&statKey={key}` |
+
+Fixtures give us the match list. Scores snapshots and updates drive the live clock,
+phase (from the status id), score, cards, and corners, and settle prediction cards.
+Odds set the payout multiplier. Stat validation backs the provably-fair receipt.
 
 ## What you can do
 
@@ -117,6 +179,32 @@ credentials are ever exposed to the browser.
 
 The browser app never talks to the database or the data feed directly. All game
 logic and every secret live on the server.
+
+```
+                        +---------------------------+
+                        |  Browser app (React/Vite) |
+                        |  play, chat, tournaments  |
+                        +---------------------------+
+                          |  reads (Realtime, RLS)  ^  writes (session)
+                          v                         |
+       +--------------------------------------------------------------+
+       |                    Supabase                                  |
+       |   Postgres + RLS      Realtime        Auth                   |
+       |                                                              |
+       |   Edge Functions (Deno, service role)                       |
+       |   engine-tick (every minute) . tournaments . squads .       |
+       |   match-predict . chat . telegram(+webhook) . auth          |
+       +--------------------------------------------------------------+
+             |                      |                       |
+             v                      v                       v
+     +----------------+   +------------------+   +----------------------+
+     | TxLINE / TxODDS|   |  Solana RPC      |   |  FCM + Telegram      |
+     | fixtures,      |   |  verify USDC     |   |  push + bot alerts   |
+     | scores, odds,  |   |  payouts, oracle |   |                      |
+     | stat proofs    |   |  receipts        |   |                      |
+     +----------------+   +------------------+   +----------------------+
+```
+
 
 - A scheduled Edge Function (the engine) runs every minute. It syncs fixtures,
   advances live matches from the feed, opens and settles prediction cards, updates
