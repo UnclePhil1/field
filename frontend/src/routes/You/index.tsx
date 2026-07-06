@@ -3,6 +3,7 @@ import { useAppStore } from '../../app/AppStore';
 import { fetchRecentCalls } from '../../lib/api';
 import { StreakMeter } from '../../features/streak/StreakMeter';
 import { NotificationSettings } from '../../features/notifications/NotificationSettings';
+import { ConnectTelegram } from '../../features/notifications/ConnectTelegram';
 import { AccountSettings } from '../../features/account/AccountSettings';
 import { StatLabel } from '../../components/StatLabel';
 import { Wordmark } from '../../components/AppBar';
@@ -51,6 +52,7 @@ export function You() {
       {/* account + notifications */}
       <div className="mt-5 flex flex-col gap-4">
         <AccountSettings />
+        <ConnectTelegram />
         <NotificationSettings />
       </div>
 

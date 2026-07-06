@@ -168,7 +168,8 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
       {mark?.kind === 'corner' && (
         <div
           className={['pitch__corner', mark.y < 0.25 ? 'pitch__corner--low' : ''].join(' ')}
-          style={{ left: `${mark.x * 100}%`, top: `${mark.y * 100}%` }}
+          // clamp horizontally so the "Corner Kick" label never clips off the edge
+          style={{ left: `${Math.min(85, Math.max(15, mark.x * 100))}%`, top: `${mark.y * 100}%` }}
         >
           <span className="pitch__corner-label">Corner Kick</span>
           <span className="pitch__corner-dot" />

@@ -25,6 +25,7 @@ type MatchRow = {
   away_country: string | null;
   status: Match['status'];
   phase: Match['phase'];
+  stage: string | null;
   minute: number;
   home_score: number;
   away_score: number;
@@ -43,6 +44,7 @@ function toMatch(r: MatchRow): Match {
     away: { code: r.away_code, name: r.away_name, country: r.away_country ?? undefined },
     status: r.status,
     phase: r.phase,
+    stage: r.stage ?? undefined,
     minute: r.minute,
     homeScore: r.home_score,
     awayScore: r.away_score,
@@ -122,6 +124,55 @@ export async function fetchMatches(): Promise<Match[]> {
 export async function fetchMatch(id: string): Promise<Match | undefined> {
   const { data } = await supabase.from('matches').select('*').eq('id', id).maybeSingle();
   return data ? toMatch(data as MatchRow) : undefined;
+}
+
+/** Finished matches, most recent first — the replay library. */
+export async function fetchFinishedMatches(): Promise<Match[]> {
+  const { data, error } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('status', 'finished')
+    .order('kickoff', { ascending: false })
+    .limit(40);
+  if (error) throw error;
+  return (data as MatchRow[]).map(toMatch);
+}
+
+/**
+ * Finished matches for the replay library, each flagged `replayable` — true only
+ * when the recorded goal events reconstruct the real final score (the engine only
+ * captures events it witnessed live, so partially-observed matches are excluded).
+ */
+export async function fetchReplayLibrary(): Promise<{ match: Match; replayable: boolean }[]> {
+  const matches = await fetchFinishedMatches();
+  if (!matches.length) return [];
+  const ids = matches.map((m) => m.id);
+  const { data: goals } = await supabase
+    .from('match_events')
+    .select('match_id, side')
+    .in('match_id', ids)
+    .eq('kind', 'goal');
+  const counts: Record<string, { home: number; away: number }> = {};
+  (goals as { match_id: string; side: 'home' | 'away' }[] | null)?.forEach((g) => {
+    counts[g.match_id] ??= { home: 0, away: 0 };
+    counts[g.match_id][g.side] += 1;
+  });
+  return matches.map((m) => {
+    const c = counts[m.id] ?? { home: 0, away: 0 };
+    const replayable = c.home === m.homeScore && c.away === m.awayScore;
+    return { match: m, replayable };
+  });
+}
+
+/** All recorded events for a match (for replay), oldest first. */
+export async function fetchMatchEvents(matchId: string): Promise<MatchEvent[]> {
+  const { data } = await supabase
+    .from('match_events')
+    .select('*')
+    .eq('match_id', matchId)
+    .order('minute', { ascending: true })
+    .order('seq', { ascending: true });
+  return (data as EventRow[] | null)?.map(toEvent) ?? [];
 }
 
 export async function fetchLeaderboard(): Promise<Player[]> {

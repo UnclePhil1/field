@@ -105,6 +105,26 @@ export function fetchScoreUpdates(s: Session, fixtureId: number): Promise<unknow
   return get<unknown[]>(s, `/api/scores/updates/${fixtureId}`);
 }
 
+/** Full historical score sequence for a past fixture (2 weeks–6h old). */
+export function fetchScoresHistorical(s: Session, fixtureId: number): Promise<unknown[]> {
+  return get<unknown[]>(s, `/api/scores/historical/${fixtureId}`);
+}
+
+export interface OddsOffer {
+  SuperOddsType?: string;
+  PriceNames?: string[];
+  Prices?: number[];
+  Pct?: string[]; // implied probability %, 3dp, or "NA"
+  InRunning?: boolean;
+  MarketPeriod?: string;
+  Ts?: number;
+}
+
+/** Latest StablePrice odds offers for a fixture (may be empty pre-match). */
+export function fetchOdds(s: Session, fixtureId: number): Promise<OddsOffer[]> {
+  return get<OddsOffer[]>(s, `/api/odds/snapshot/${fixtureId}`);
+}
+
 /** Merkle proof / validation data for one stat (read-only — for receipts). */
 export function fetchStatValidation(
   s: Session,

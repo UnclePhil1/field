@@ -4,6 +4,8 @@ import { Landing } from '../routes/Landing';
 import { Connect } from '../routes/Connect';
 import { Lobby } from '../routes/Lobby';
 import { MatchRoom } from '../routes/MatchRoom';
+import { Replay } from '../routes/Replay';
+import { ReplayMatch } from '../routes/Replay/Match';
 import { Leaderboard } from '../routes/Leaderboard';
 import { You } from '../routes/You';
 import { Tournaments } from '../routes/Tournaments';
@@ -22,6 +24,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/play', element: <Lobby /> },
       { path: '/match/:id', element: <MatchRoom /> },
+      { path: '/replay', element: <Replay /> },
+      { path: '/replay/:id', element: <ReplayMatch /> },
       { path: '/tournaments', element: <Tournaments /> },
       { path: '/tournaments/create', element: <TournamentCreate /> },
       { path: '/tournaments/mine', element: <MyTournaments /> },

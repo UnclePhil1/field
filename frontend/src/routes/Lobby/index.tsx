@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchMatches } from '../../lib/api';
 import { MatchCard } from '../../features/match/MatchCard';
 import { StatLabel } from '../../components/StatLabel';
@@ -21,14 +22,19 @@ export function Lobby() {
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-5">
-      <header className="mb-5">
-        <StatLabel>Play along</StatLabel>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">
-          Pick a match. Call the next moment.
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Free coins, real streaks, every result provably fair.
-        </p>
+      <header className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+        <div>
+          <StatLabel>Play along</StatLabel>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">
+            Pick a match. Call the next moment.
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Free coins, real streaks, every result provably fair.
+          </p>
+        </div>
+        <Link to="/replay" className="shrink-0 whitespace-nowrap text-xs font-semibold text-grass hover:underline">
+          Watch a replay →
+        </Link>
       </header>
 
       {loading ? (

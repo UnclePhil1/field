@@ -23,3 +23,11 @@ verify_jwt = false
 
 [functions.link-wallet]
 verify_jwt = false
+
+# User-facing link/unlink — needs the caller's session (getUser handles auth).
+[functions.telegram]
+verify_jwt = false
+
+# Public webhook hit by Telegram's servers — secured via the secret-token header.
+[functions.telegram-webhook]
+verify_jwt = false

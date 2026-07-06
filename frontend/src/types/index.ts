@@ -20,6 +20,8 @@ export interface Match {
   away: Team;
   status: MatchStatus;
   phase: MatchPhase;
+  /** knockout stage label (e.g. "Round of 16"), when known */
+  stage?: string;
   /** match clock in minutes, e.g. 68 */
   minute: number;
   homeScore: number;

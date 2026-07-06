@@ -30,7 +30,7 @@ export function MatchCard({ match }: { match: Match }) {
     <Wrapper>
       <span className="arc-b" aria-hidden />
       <div className="flex items-center justify-between">
-        <span className="eyebrow">{match.competition}</span>
+        <span className="eyebrow">{match.stage ? `${match.competition} · ${match.stage}` : match.competition}</span>
         {live ? (
           <Chip tone="flare" className="uppercase">
             <span className="animate-live-pulse mr-1 inline-block h-1.5 w-1.5 rounded-full bg-flare" />

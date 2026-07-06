@@ -7,11 +7,15 @@
 //    fairly, it VOIDS (coins returned, streak preserved) — per the spec.
 import { admin } from '../_shared/supabase.ts';
 import { json } from '../_shared/cors.ts';
-import { getSession, fetchFixtures, fetchScores, type TxFixture } from '../_shared/txline.ts';
+import { getSession, fetchFixtures, fetchScores, fetchOdds, type TxFixture } from '../_shared/txline.ts';
 import { generateCard, isLivePhase, type MatchPhase } from '../_shared/cards.ts';
+import { stageFor } from '../_shared/stage.ts';
+import { impliedWinProbability, multiplierFromProb } from '../_shared/odds.ts';
 import { score } from '../_shared/scoring.ts';
 import { countryToIso2 } from '../_shared/countries.ts';
-import { fcmEnabled, prefAllows, notifyUser } from '../_shared/fcm.ts';
+import { prefAllows } from '../_shared/fcm.ts';
+import { notifyAll } from '../_shared/notify.ts';
+import { broadcastTelegram, telegramEnabled } from '../_shared/telegram.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const WC_COMPETITION_ID = Number(Deno.env.get('TXLINE_COMPETITION_ID') ?? '0') || undefined;
@@ -117,6 +121,38 @@ function spotFor(kind: 'goal' | 'card' | 'corner', side: 'home' | 'away'): { x: 
 }
 
 
+/**
+ * Users who care about a given match = anyone who has placed a prediction on it,
+ * plus anyone following it in their notification preferences. Used to target
+ * match-event broadcasts (goals/cards/corners) instead of blasting everyone.
+ */
+async function interestedUsers(db: any, matchId: string): Promise<string[]> {
+  const set = new Set<string>();
+  const { data: cards } = await db.from('prediction_cards').select('id').eq('match_id', matchId);
+  const ids = (cards ?? []).map((c: any) => c.id);
+  if (ids.length) {
+    const { data: preds } = await db.from('predictions').select('user_id').in('card_id', ids);
+    for (const p of preds ?? []) set.add(p.user_id);
+  }
+  const { data: followers } = await db
+    .from('notification_preferences').select('user_id').contains('followed', [matchId]);
+  for (const f of followers ?? []) set.add(f.user_id);
+  return [...set];
+}
+
+/** Keep only users whose prefs allow `check` (default on when no row exists). */
+async function allowed(db: any, userIds: string[], check: (p: any) => boolean): Promise<string[]> {
+  if (!userIds.length) return [];
+  const { data: prefs } = await db.from('notification_preferences').select('*').in('user_id', userIds);
+  const map = new Map((prefs ?? []).map((p: any) => [p.user_id, p]));
+  return userIds.filter((id) => {
+    const p = map.get(id);
+    if (!p) return true;
+    if (p.enabled === false) return false;
+    return check(p);
+  });
+}
+
 Deno.serve(async (req) => {
   // Only the scheduler (or an operator with the secret) may run the engine.
   if (CRON_SECRET && req.headers.get('x-cron-secret') !== CRON_SECRET) {
@@ -165,6 +201,7 @@ Deno.serve(async (req) => {
           away_code: code(f.Participant2),
           away_name: f.Participant2,
           away_country: countryToIso2(f.Participant2),
+          stage: stageFor(start, 'World Cup'),
           status,
           phase: status === 'live' ? phaseForMinute(minute) : status === 'finished' ? 'FT' : 'PRE',
           minute,
@@ -179,10 +216,34 @@ Deno.serve(async (req) => {
     log.fixtures = `error: ${e instanceof Error ? e.message : e}`;
   }
 
+  // ── Pre-match reminders: matches kicking off within 15 min, once each ──
+  if (telegramEnabled) {
+    try {
+      const nowIso = new Date().toISOString();
+      const soon = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const { data: upSoon } = await db
+        .from('matches')
+        .select('id, home_code, away_code, stage')
+        .eq('status', 'upcoming')
+        .eq('pre_notified', false)
+        .gte('kickoff', nowIso)
+        .lte('kickoff', soon);
+      for (const um of upSoon ?? []) {
+        await db.from('matches').update({ pre_notified: true }).eq('id', um.id);
+        const fans = await allowed(db, await interestedUsers(db, um.id), (p) => p.match_events?.phases !== false);
+        await broadcastTelegram(db, fans, {
+          title: `⏰ Starting soon — ${um.home_code} v ${um.away_code}`,
+          body: `${um.stage ? um.stage + ' · ' : ''}Kicks off within 15 minutes. Line up your first call.`,
+          url: `/match/${um.id}`,
+        }).catch(() => {});
+      }
+    } catch { /* reminders are best-effort */ }
+  }
+
   // ── Work the live matches ──
   const { data: liveMatches } = await db
     .from('matches')
-    .select('id, txline_fixture_id, home_code, away_code, phase, minute, stat_snapshot')
+    .select('id, txline_fixture_id, home_code, away_code, home_name, away_name, stage, phase, minute, stat_snapshot, kickoff_notified, ft_notified')
     .eq('status', 'live');
 
   for (const m of liveMatches ?? []) {
@@ -216,6 +277,30 @@ Deno.serve(async (req) => {
       // Match kicked off → flip its tournaments to live (also closes joining).
       if (realStatus === 'live') {
         await db.from('tournaments').update({ status: 'live' }).eq('match_id', m.id).eq('status', 'upcoming');
+
+        // Kick-off broadcast (once) to everyone following/playing this match.
+        if (!m.kickoff_notified) {
+          await db.from('matches').update({ kickoff_notified: true }).eq('id', m.id);
+          if (telegramEnabled) {
+            const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
+            await broadcastTelegram(db, fans, {
+              title: `🟢 Kick-off — ${m.home_code} v ${m.away_code}`,
+              body: `${m.stage ? m.stage + ' · ' : ''}It’s live. Call the next moment.`,
+              url: `/match/${m.id}`,
+            }).catch(() => {});
+          }
+          // Any tournaments now live → tell participants play is open.
+          const { data: liveTours } = await db.from('tournaments').select('id, title').eq('match_id', m.id).eq('status', 'live');
+          for (const t of liveTours ?? []) {
+            const { data: parts } = await db.from('tournament_participants').select('user_id').eq('tournament_id', t.id);
+            const uids = await allowed(db, (parts ?? []).map((p: any) => p.user_id), (p) => p.tournaments?.results !== false);
+            await broadcastTelegram(db, uids, {
+              title: `🏆 ${t.title} is live`,
+              body: `${m.home_code} v ${m.away_code} kicked off — your 1,000-pt stack is in play.`,
+              url: `/tournaments/${t.id}`,
+            }).catch(() => {});
+          }
+        }
       }
 
       // Match abandoned/cancelled/coverage-cancelled → void its tournaments (no prize owed).
@@ -223,6 +308,18 @@ Deno.serve(async (req) => {
         await db.from('tournaments').update({ status: 'voided' })
           .eq('match_id', m.id).in('status', ['upcoming', 'live', 'settling']);
       } else if (realStatus === 'finished') {
+        // Full-time broadcast (once) with the final score.
+        if (!m.ft_notified) {
+          await db.from('matches').update({ ft_notified: true }).eq('id', m.id);
+          if (telegramEnabled) {
+            const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
+            await broadcastTelegram(db, fans, {
+              title: `⏱️ Full time — ${m.home_code} ${statOf(latest, 1) ?? 0}–${statOf(latest, 2) ?? 0} ${m.away_code}`,
+              body: 'Results are settling now. Rewatch it in Replay.',
+              url: `/replay/${m.id}`,
+            }).catch(() => {});
+          }
+        }
         // Match ended normally → finalize standings for its tournaments.
         const { data: tours } = await db
           .from('tournaments')
@@ -273,6 +370,41 @@ Deno.serve(async (req) => {
     }
     if (newEvents.length) await db.from('match_events').insert(newEvents);
     await db.from('matches').update({ stat_snapshot: nextSnap }).eq('id', m.id);
+
+    // ── 2c. Broadcast each new event to interested users over Telegram ──
+    if (newEvents.length && telegramEnabled) {
+      const fans = await interestedUsers(db, m.id);
+      if (fans.length) {
+        const hs = statOf(latest, 1) ?? 0;
+        const as = statOf(latest, 2) ?? 0;
+        // Resolve pref-eligible audiences once per category, not per event.
+        const cache: Record<string, string[]> = {};
+        const audience = async (cat: 'goals' | 'cards' | 'corners') =>
+          cache[cat] ??= await allowed(db, fans, (p) => p.match_events?.[cat] !== false);
+        for (const ev of newEvents) {
+          const kind = ev.kind as 'goal' | 'card' | 'corner';
+          const teamCode = ev.side === 'home' ? m.home_code : m.away_code;
+          const teamName = ev.side === 'home' ? (m.home_name ?? m.home_code) : (m.away_name ?? m.away_code);
+          let title: string, cat: 'goals' | 'cards' | 'corners';
+          if (kind === 'goal') {
+            title = `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
+            cat = 'goals';
+          } else if (kind === 'card') {
+            const red = /red/i.test(String(ev.label));
+            title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${teamCode}`;
+            cat = 'cards';
+          } else {
+            title = `⛳ Corner — ${teamCode}`;
+            cat = 'corners';
+          }
+          await broadcastTelegram(db, await audience(cat), {
+            title,
+            body: `${teamName} · ${ev.minute}'${m.stage ? ' · ' + m.stage : ''}`,
+            url: `/match/${m.id}`,
+          }).catch(() => {});
+        }
+      }
+    }
 
     // ── 3. Settle due cards ──
     const { data: dueCards } = await db
@@ -372,14 +504,10 @@ Deno.serve(async (req) => {
           receipt,
         }, { onConflict: 'card_id,user_id' });
 
-        // push: "your call settled" (opt-in, gated on the service account)
-        if (fcmEnabled && await prefAllows(db, callRow.user_id, (p) => p.my_play?.settled !== false)) {
-          await notifyUser(db, callRow.user_id, {
-            title: r.won ? `⚽ Your call hit — +${r.payout}` : '✕ Not this time',
-            body: card.question,
-            url: `/match/${m.id}`,
-            tag: `settle-${card.id}`,
-          }).catch(() => {});
+        // notify "your call settled" across every channel (inbox + push + Telegram).
+        if (await prefAllows(db, callRow.user_id, (p) => p.my_play?.settled !== false)) {
+          const title = r.won ? `⚽ Your call hit — +${r.payout}` : '✕ Not this time';
+          await notifyAll(db, callRow.user_id, { title, body: card.question, url: `/match/${m.id}`, kind: 'settled' }).catch(() => {});
         }
       }
 
@@ -421,6 +549,22 @@ Deno.serve(async (req) => {
       if (isLivePhase(phase) && phase !== 'HT') {
         const gen = generateCard({ phase, homeCode: m.home_code, awayCode: m.away_code, windowSeconds: CARD_WINDOW_SECONDS });
         const baseline = gen.txline_stat_key != null ? statOf(latest, gen.txline_stat_key) : null;
+
+        // Odds-weighted pricing (defensive): for goal cards, price off the live
+        // market's implied win probability when odds are available; else heuristic.
+        let multiplier = gen.multiplier;
+        let crowdYes = gen.crowd_yes;
+        if (gen.stat === 'goal' && m.txline_fixture_id) {
+          try {
+            const offers = await fetchOdds(session, Number(m.txline_fixture_id));
+            const prob = impliedWinProbability(offers, gen.side);
+            if (prob != null) {
+              multiplier = multiplierFromProb(prob);
+              crowdYes = Math.round(prob * 100);
+            }
+          } catch { /* no odds → keep heuristic */ }
+        }
+
         await db.from('prediction_cards').insert({
           match_id: m.id,
           status: 'live',
@@ -428,14 +572,25 @@ Deno.serve(async (req) => {
           side: gen.side,
           question: gen.question,
           subject_team: gen.subject_team,
-          multiplier: gen.multiplier,
+          multiplier,
           locks_at: new Date(Date.now() + gen.window_seconds * 1000).toISOString(),
           window_seconds: gen.window_seconds,
-          crowd_yes: gen.crowd_yes,
+          crowd_yes: crowdYes,
           sync_line: gen.sync_line,
           txline_stat_key: gen.txline_stat_key,
           baseline_stat: baseline ?? 0,
         });
+
+        // Prediction ping — a fresh card is open (~every card window, so roughly
+        // one every few minutes) to those playing/following this match.
+        if (telegramEnabled) {
+          const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.my_play?.new_card !== false);
+          await broadcastTelegram(db, fans, {
+            title: `🎯 New prediction — ${m.home_code} v ${m.away_code}`,
+            body: `${gen.question} · ${m.minute}'`,
+            url: `/match/${m.id}`,
+          }).catch(() => {});
+        }
       }
     }
   }

@@ -53,7 +53,7 @@ export function LivePanel({ match, events }: LivePanelProps) {
           align="left"
         />
       </div>
-      <p className="mt-1 text-center text-xs text-muted">{match.competition}</p>
+      <p className="mt-1 text-center text-xs text-muted">{match.stage ? `${match.competition} · ${match.stage}` : match.competition}</p>
 
       {/* pitch */}
       <div className="mt-4">

@@ -4,6 +4,7 @@ import { useAppStore } from '../app/AppStore';
 import { useAuth } from '../app/AuthStore';
 import { Chip } from './Chip';
 import { CoinIcon, FlameIcon, WalletIcon } from './Icons';
+import { NotificationBell } from './NotificationBell';
 import { formatCoins } from '../lib/format';
 import { shortAddress } from '../lib/wallet';
 
@@ -61,11 +62,12 @@ export function WalletChip() {
   return (
     <button
       onClick={handleSignOut}
-      title="Sign out"
-      className="inline-flex items-center gap-1.5 rounded-full border border-edge bg-turf-2 px-2.5 py-1 text-xs font-semibold text-chalk-dim transition-colors hover:border-grass/60 hover:text-chalk"
+      title={`${label} · sign out`}
+      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-edge bg-turf-2 px-2 text-xs font-semibold text-chalk-dim transition-colors hover:border-grass/60 hover:text-chalk sm:px-2.5"
     >
-      <WalletIcon size={14} />
-      <span className="tabular">{label}</span>
+      <WalletIcon size={15} />
+      {/* label hidden on mobile — icon only to save space */}
+      <span className="tabular hidden max-w-[110px] truncate sm:inline">{label}</span>
     </button>
   );
 }
@@ -78,6 +80,7 @@ export function AppBar({ showBrand = true }: { showBrand?: boolean }) {
         <div className="ml-auto flex items-center gap-2">
           <StreakChip />
           <CoinsChip />
+          <NotificationBell />
           <WalletChip />
         </div>
       </div>

@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveMatch } from '../../lib/useLiveMatch';
 import { useAppStore } from '../../app/AppStore';
 import { tournamentApi } from '../../lib/tournamentApi';
-import { TrophyIcon } from '../../components/Icons';
+import { TrophyIcon, PlayIcon } from '../../components/Icons';
 import { ShareButton } from '../../components/ShareButton';
 import { LivePanel } from '../../features/match/LivePanel';
 import { RecentCalls } from '../../features/match/RecentCalls';
@@ -55,6 +55,18 @@ export function MatchRoom() {
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-4 sm:py-5">
+      {match.status === 'finished' && (
+        <Link
+          to={`/replay/${match.id}`}
+          className="mb-4 flex items-center justify-between gap-3 rounded-card border border-grass/40 bg-grass/10 px-4 py-2.5 transition-colors hover:border-grass/60"
+        >
+          <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-grass">
+            <PlayIcon size={16} className="shrink-0" />
+            <span className="truncate">Full time — watch the replay</span>
+          </span>
+          <span className="shrink-0 text-xs font-bold text-chalk-dim">→</span>
+        </Link>
+      )}
       {tour && (
         <Link
           to={`/tournaments/${tour.id}`}

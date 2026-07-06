@@ -4,7 +4,8 @@
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 import { isValidSolanaAddress, verifyUsdcPayment } from '../_shared/solana.ts';
-import { fcmEnabled, prefAllows, notifyUser } from '../_shared/fcm.ts';
+import { prefAllows } from '../_shared/fcm.ts';
+import { notifyAll } from '../_shared/notify.ts';
 
 const PAYOUT_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -338,14 +339,11 @@ Deno.serve(async (req) => {
           { tournament_id: id, rank: r + 1, user_id: ranked[r].user_id, amount, asset: 'USDC', status: 'awaiting_address' },
           { onConflict: 'tournament_id,rank' },
         );
-        // push: "you won — submit your payout address" (opt-in)
-        if (fcmEnabled && await prefAllows(db, ranked[r].user_id, (p) => p.tournaments?.results !== false)) {
-          await notifyUser(db, ranked[r].user_id, {
-            title: `🏆 Results are in — you finished #${r + 1}`,
-            body: `Claim $${amount} USDC in ${t.title}`,
-            url: `/tournaments/${id}`,
-            tag: `tsettle-${id}`,
-          }).catch(() => {});
+        // notify "you won — submit your payout address" across every channel.
+        if (await prefAllows(db, ranked[r].user_id, (p) => p.tournaments?.results !== false)) {
+          const title = `🏆 Results are in — you finished #${r + 1}`;
+          const body = `Claim $${amount} USDC in ${t.title}`;
+          await notifyAll(db, ranked[r].user_id, { title, body, url: `/tournaments/${id}`, kind: 'tournament' }).catch(() => {});
         }
       }
       await db
