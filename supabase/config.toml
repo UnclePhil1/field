@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.chat]
 verify_jwt = false
+
+[functions.score-link]
+verify_jwt = false

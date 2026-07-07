@@ -7,14 +7,14 @@
 //    fairly, it VOIDS (coins returned, streak preserved) — per the spec.
 import { admin } from '../_shared/supabase.ts';
 import { json } from '../_shared/cors.ts';
-import { getSession, fetchFixtures, fetchScores, fetchOdds, type TxFixture } from '../_shared/txline.ts';
+import { getSession, fetchFixtures, fetchScores, fetchOdds, fetchScoresHistorical, type TxFixture } from '../_shared/txline.ts';
 import { generateCard, isLivePhase, type MatchPhase } from '../_shared/cards.ts';
 import { stageFor } from '../_shared/stage.ts';
 import { impliedWinProbability, multiplierFromProb } from '../_shared/odds.ts';
 import { score } from '../_shared/scoring.ts';
 import { countryToIso2 } from '../_shared/countries.ts';
 import { prefAllows } from '../_shared/fcm.ts';
-import { notifyAll } from '../_shared/notify.ts';
+import { notifyAll, notifyInbox } from '../_shared/notify.ts';
 import { broadcastTelegram, telegramEnabled } from '../_shared/telegram.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
@@ -149,6 +149,77 @@ async function allowed(db: any, userIds: string[], check: (p: any) => boolean): 
   });
 }
 
+/** Everyone who has connected Telegram — the audience for match-event pings. */
+async function linkedUserIds(db: any): Promise<string[]> {
+  const { data } = await db.from('telegram_links').select('user_id');
+  return (data ?? []).map((r: any) => r.user_id);
+}
+
+/**
+ * Send one match event everywhere it should go: Telegram to every connected user
+ * (`tg`), and the in-app inbox to the people actually playing/following (`inbox`).
+ * Both are pre-filtered by preference. Best-effort — a failure never blocks a tick.
+ */
+async function fanOut(db: any, tg: string[], inbox: string[], payload: { title: string; body?: string; url?: string }, kind: string): Promise<void> {
+  if (tg.length) await broadcastTelegram(db, tg, payload).catch(() => {});
+  for (const uid of inbox) await notifyInbox(db, uid, { ...payload, kind }).catch(() => {});
+}
+
+/** Minute from a scores entry's clock (0–130), best-effort. */
+function clockMinute(entry: Entry): number | null {
+  const c = entry?.Clock;
+  if (!c) return null;
+  return Math.max(0, Math.min(130, Math.floor(Number(c.Seconds ?? 0) / 60)));
+}
+
+/**
+ * Rebuild a finished match's full event timeline from the TxLINE historical feed
+ * so its replay reconstructs the real final score. Replaces any partial events the
+ * live loop recorded. Returns false if history isn't available yet (retry later).
+ */
+async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean> {
+  let hist: unknown[] = [];
+  try {
+    hist = await fetchScoresHistorical(session, Number(m.txline_fixture_id));
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(hist) || hist.length === 0) return false;
+
+  const entries = ([...hist] as Entry[]).sort((a, b) => Number(a?.Ts ?? 0) - Number(b?.Ts ?? 0));
+  const prev: Record<string, number> = {};
+  const events: Record<string, unknown>[] = [];
+  let seq = Date.now();
+  let lastMinute = 0;
+  let finalHome = 0, finalAway = 0;
+
+  for (const e of entries) {
+    const minute = Math.max(lastMinute, clockMinute(e) ?? lastMinute);
+    lastMinute = minute;
+    const h = statOf(e, 1); if (h != null) finalHome = h;
+    const a = statOf(e, 2); if (a != null) finalAway = a;
+    for (const [keyStr, def] of Object.entries(EVENT_KEYS)) {
+      const cur = statOf(e, Number(keyStr));
+      if (cur == null) continue;
+      const p = prev[keyStr] ?? 0;
+      if (cur > p) {
+        const teamCode = def.side === 'home' ? m.home_code : m.away_code;
+        for (let i = p; i < cur; i++) {
+          const spot = spotFor(def.kind, def.side);
+          events.push({ match_id: m.id, kind: def.kind, side: def.side, minute, label: `${def.label} · ${teamCode}`, x: spot.x, y: spot.y, seq: seq++ });
+        }
+      }
+      prev[keyStr] = Math.max(p, cur);
+    }
+  }
+
+  // Replace partial live events with the complete reconstruction.
+  await db.from('match_events').delete().eq('match_id', m.id);
+  if (events.length) await db.from('match_events').insert(events);
+  await db.from('matches').update({ replay_built: true, home_score: finalHome, away_score: finalAway }).eq('id', m.id);
+  return true;
+}
+
 Deno.serve(async (req) => {
   // Only the scheduler (or an operator with the secret) may run the engine.
   if (CRON_SECRET && req.headers.get('x-cron-secret') !== CRON_SECRET) {
@@ -212,29 +283,39 @@ Deno.serve(async (req) => {
     log.fixtures = `error: ${e instanceof Error ? e.message : e}`;
   }
 
-  // ── Pre-match reminders: matches kicking off within 15 min, once each ──
-  if (telegramEnabled) {
-    try {
-      const nowIso = new Date().toISOString();
-      const soon = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      const { data: upSoon } = await db
-        .from('matches')
-        .select('id, home_code, away_code, stage')
-        .eq('status', 'upcoming')
-        .eq('pre_notified', false)
-        .gte('kickoff', nowIso)
-        .lte('kickoff', soon);
-      for (const um of upSoon ?? []) {
-        await db.from('matches').update({ pre_notified: true }).eq('id', um.id);
-        const fans = await allowed(db, await interestedUsers(db, um.id), (p) => p.match_events?.phases !== false);
-        await broadcastTelegram(db, fans, {
-          title: `⏰ Starting soon — ${um.home_code} v ${um.away_code}`,
-          body: `${um.stage ? um.stage + ' · ' : ''}Kicks off within 15 minutes. Line up your first call.`,
-          url: `/match/${um.id}`,
-        }).catch(() => {});
-      }
-    } catch { /* reminders are best-effort */ }
-  }
+  // Everyone who connected Telegram — the audience for match-event pings.
+  const linkedAll = telegramEnabled ? await linkedUserIds(db) : [];
+
+  // ── Pre-match reminders: ping at 1h, 30m, 10m, 5m, and 1m before kickoff ──
+  const PRE_WINDOWS = [60, 30, 10, 5, 1];
+  try {
+    const now = Date.now();
+    const { data: upSoon } = await db
+      .from('matches')
+      .select('id, home_code, away_code, stage, kickoff, pre_stage')
+      .eq('status', 'upcoming')
+      .gte('kickoff', new Date(now).toISOString())
+      .lte('kickoff', new Date(now + 66 * 60 * 1000).toISOString());
+    for (const um of upSoon ?? []) {
+      const minsLeft = (new Date(um.kickoff).getTime() - now) / 60000;
+      let stage = um.pre_stage ?? 0;
+      const fired: number[] = [];
+      while (stage < PRE_WINDOWS.length && minsLeft <= PRE_WINDOWS[stage]) { fired.push(PRE_WINDOWS[stage]); stage++; }
+      if (fired.length === 0) continue;
+      await db.from('matches').update({ pre_stage: stage }).eq('id', um.id);
+      // If the engine caught up across several windows, only ping the nearest one.
+      const w = fired[fired.length - 1];
+      const label = w >= 60 ? '1 hour' : `${w} minute${w === 1 ? '' : 's'}`;
+      const interested = await interestedUsers(db, um.id);
+      const tg = await allowed(db, linkedAll, (p) => p.match_events?.phases !== false);
+      const inbox = await allowed(db, interested, (p) => p.match_events?.phases !== false);
+      await fanOut(db, tg, inbox, {
+        title: `⏰ ${um.home_code} v ${um.away_code} — kicks off in ${label}`,
+        body: `${um.stage ? um.stage + ' · ' : ''}Get your Score Link and first call ready.`,
+        url: `/match/${um.id}`,
+      }, 'prematch');
+    }
+  } catch { /* reminders are best-effort */ }
 
   // ── Work the live matches ──
   const { data: liveMatches } = await db
@@ -274,16 +355,17 @@ Deno.serve(async (req) => {
       if (realStatus === 'live') {
         await db.from('tournaments').update({ status: 'live' }).eq('match_id', m.id).eq('status', 'upcoming');
 
-        // Kick-off broadcast (once) to everyone following/playing this match.
+        // Kick-off broadcast (once): Telegram to all connected users, inbox to players.
         if (!m.kickoff_notified) {
           await db.from('matches').update({ kickoff_notified: true }).eq('id', m.id);
-          if (telegramEnabled) {
-            const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
-            await broadcastTelegram(db, fans, {
+          {
+            const tg = await allowed(db, linkedAll, (p) => p.match_events?.phases !== false);
+            const inbox = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
+            await fanOut(db, tg, inbox, {
               title: `🟢 Kick-off — ${m.home_code} v ${m.away_code}`,
               body: `${m.stage ? m.stage + ' · ' : ''}It’s live. Call the next moment.`,
               url: `/match/${m.id}`,
-            }).catch(() => {});
+            }, 'kickoff');
           }
           // Any tournaments now live → tell participants play is open.
           const { data: liveTours } = await db.from('tournaments').select('id, title').eq('match_id', m.id).eq('status', 'live');
@@ -307,13 +389,14 @@ Deno.serve(async (req) => {
         // Full-time broadcast (once) with the final score.
         if (!m.ft_notified) {
           await db.from('matches').update({ ft_notified: true }).eq('id', m.id);
-          if (telegramEnabled) {
-            const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
-            await broadcastTelegram(db, fans, {
+          {
+            const tg = await allowed(db, linkedAll, (p) => p.match_events?.phases !== false);
+            const inbox = await allowed(db, await interestedUsers(db, m.id), (p) => p.match_events?.phases !== false);
+            await fanOut(db, tg, inbox, {
               title: `⏱️ Full time — ${m.home_code} ${statOf(latest, 1) ?? 0}–${statOf(latest, 2) ?? 0} ${m.away_code}`,
               body: 'Results are settling now. Rewatch it in Replay.',
               url: `/replay/${m.id}`,
-            }).catch(() => {});
+            }, 'fulltime');
           }
         }
         // Settle "Call the Score": exact score pays big, correct result pays small.
@@ -340,6 +423,30 @@ Deno.serve(async (req) => {
             }).catch(() => {});
           }
           await db.from('match_predictions').update({ settled: true, points }).eq('match_id', m.id).eq('user_id', c.user_id);
+        }
+
+        // Settle Score Link: exact scoreline wins stake × locked multiplier.
+        const { data: slPicks } = await db
+          .from('score_link_picks')
+          .select('id, user_id, home_goals, away_goals, stake, multiplier')
+          .eq('match_id', m.id)
+          .eq('settled', false);
+        for (const sp of slPicks ?? []) {
+          const won = sp.home_goals === fh && sp.away_goals === fa;
+          const payout = won ? Math.round(sp.stake * Number(sp.multiplier)) : 0;
+          if (won) {
+            const { data: prof } = await db.from('profiles').select('coins').eq('id', sp.user_id).maybeSingle();
+            if (prof) await db.from('profiles').update({ coins: prof.coins + payout }).eq('id', sp.user_id);
+          }
+          await db.from('score_link_picks').update({ settled: true, won, payout }).eq('id', sp.id);
+          if (await prefAllows(db, sp.user_id, (p) => p.my_play?.settled !== false)) {
+            await notifyAll(db, sp.user_id, {
+              title: won ? `🎯 Score Link hit! +${payout}` : '✕ Score Link missed',
+              body: `You called ${m.home_code} ${sp.home_goals}–${sp.away_goals} ${m.away_code} · final ${fh}–${fa}`,
+              url: `/match/${m.id}`,
+              kind: 'score-link',
+            }).catch(() => {});
+          }
         }
 
         // Match ended normally → finalize standings for its tournaments.
@@ -393,38 +500,38 @@ Deno.serve(async (req) => {
     if (newEvents.length) await db.from('match_events').insert(newEvents);
     await db.from('matches').update({ stat_snapshot: nextSnap }).eq('id', m.id);
 
-    // ── 2c. Broadcast each new event to interested users over Telegram ──
-    if (newEvents.length && telegramEnabled) {
-      const fans = await interestedUsers(db, m.id);
-      if (fans.length) {
-        const hs = statOf(latest, 1) ?? 0;
-        const as = statOf(latest, 2) ?? 0;
-        // Resolve pref-eligible audiences once per category, not per event.
-        const cache: Record<string, string[]> = {};
-        const audience = async (cat: 'goals' | 'cards' | 'corners') =>
-          cache[cat] ??= await allowed(db, fans, (p) => p.match_events?.[cat] !== false);
-        for (const ev of newEvents) {
-          const kind = ev.kind as 'goal' | 'card' | 'corner';
-          const teamCode = ev.side === 'home' ? m.home_code : m.away_code;
-          const teamName = ev.side === 'home' ? (m.home_name ?? m.home_code) : (m.away_name ?? m.away_code);
-          let title: string, cat: 'goals' | 'cards' | 'corners';
-          if (kind === 'goal') {
-            title = `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
-            cat = 'goals';
-          } else if (kind === 'card') {
-            const red = /red/i.test(String(ev.label));
-            title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${teamCode}`;
-            cat = 'cards';
-          } else {
-            title = `⛳ Corner — ${teamCode}`;
-            cat = 'corners';
-          }
-          await broadcastTelegram(db, await audience(cat), {
-            title,
-            body: `${teamName} · ${ev.minute}'${m.stage ? ' · ' + m.stage : ''}`,
-            url: `/match/${m.id}`,
-          }).catch(() => {});
+    // ── 2c. Announce each new event: Telegram to all connected users, inbox to
+    // the people playing/following this match. ──
+    if (newEvents.length) {
+      const interested = await interestedUsers(db, m.id);
+      const hs = statOf(latest, 1) ?? 0;
+      const as = statOf(latest, 2) ?? 0;
+      // Resolve pref-eligible Telegram + inbox audiences once per category.
+      const tgCache: Record<string, string[]> = {};
+      const inCache: Record<string, string[]> = {};
+      const tgAud = async (cat: 'goals' | 'cards' | 'corners') => tgCache[cat] ??= await allowed(db, linkedAll, (p) => p.match_events?.[cat] !== false);
+      const inAud = async (cat: 'goals' | 'cards' | 'corners') => inCache[cat] ??= await allowed(db, interested, (p) => p.match_events?.[cat] !== false);
+      for (const ev of newEvents) {
+        const kind = ev.kind as 'goal' | 'card' | 'corner';
+        const teamCode = ev.side === 'home' ? m.home_code : m.away_code;
+        const teamName = ev.side === 'home' ? (m.home_name ?? m.home_code) : (m.away_name ?? m.away_code);
+        let title: string, cat: 'goals' | 'cards' | 'corners';
+        if (kind === 'goal') {
+          title = `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
+          cat = 'goals';
+        } else if (kind === 'card') {
+          const red = /red/i.test(String(ev.label));
+          title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${teamCode}`;
+          cat = 'cards';
+        } else {
+          title = `⛳ Corner — ${teamCode}`;
+          cat = 'corners';
         }
+        await fanOut(db, await tgAud(cat), await inAud(cat), {
+          title,
+          body: `${teamName} · ${ev.minute}'${m.stage ? ' · ' + m.stage : ''}`,
+          url: `/match/${m.id}`,
+        }, 'match-event');
       }
     }
 
@@ -624,19 +731,41 @@ Deno.serve(async (req) => {
           baseline_stat: baseline ?? 0,
         });
 
-        // A fresh card is open — tell the people playing or following this match.
-        if (telegramEnabled) {
-          const fans = await allowed(db, await interestedUsers(db, m.id), (p) => p.my_play?.new_card !== false);
-          await broadcastTelegram(db, fans, {
-            title: `🎯 New prediction — ${m.home_code} v ${m.away_code}`,
+        // A fresh Flash Pool is open — Telegram to connected users, inbox to players.
+        {
+          const tg = await allowed(db, linkedAll, (p) => p.my_play?.new_card !== false);
+          const inbox = await allowed(db, await interestedUsers(db, m.id), (p) => p.my_play?.new_card !== false);
+          await fanOut(db, tg, inbox, {
+            title: `🎯 New Flash Pool — ${m.home_code} v ${m.away_code}`,
             body: `${gen.question} · ${m.minute}'`,
             url: `/match/${m.id}`,
-          }).catch(() => {});
+          }, 'flash-pool');
         }
       }
     }
   }
 
   log.liveMatches = liveMatches?.length ?? 0;
+
+  // ── Backfill replays for finished matches from the historical feed (a few per
+  // tick so the whole library fills in over a few minutes). ──
+  try {
+    const { data: toBuild } = await db
+      .from('matches')
+      .select('id, txline_fixture_id, home_code, away_code')
+      .eq('status', 'finished')
+      .eq('replay_built', false)
+      .not('txline_fixture_id', 'is', null)
+      .order('kickoff', { ascending: true })
+      .limit(4);
+    let built = 0;
+    for (const m of toBuild ?? []) {
+      if (await backfillReplay(db, session, m as Entry).catch(() => false)) built++;
+    }
+    log.replaysBuilt = built;
+  } catch (e) {
+    log.replaysBuilt = `error: ${e instanceof Error ? e.message : e}`;
+  }
+
   return json({ ok: true, ...log });
 });
