@@ -16,8 +16,8 @@ const FEATURES = [
   { Icon: CoinIcon, title: 'Build a streak', body: 'Win to grow your stack and your multiplier. A long run is worth protecting.' },
   { Icon: ShieldIcon, title: 'Provably fair', body: 'Every result settles against live data anchored on Solana. Check the receipt.' },
   { Icon: BoardIcon, title: 'Climb the board', body: 'Live per-match and tournament-long leaderboards across all 104 games.' },
-  { Icon: TrophyIcon, title: 'Flash Pool battles', body: 'Free-entry tournaments with real USDC prizes paid by the host — verified on-chain.' },
-  { Icon: ArrowIcon, title: 'Free to play', body: 'Free coins that refill daily. Jump straight in — no signup wall to start.' },
+  { Icon: TrophyIcon, title: 'Flash Pool battles', body: 'Free-entry tournaments with real USDC prizes paid by the host, verified on-chain.' },
+  { Icon: ArrowIcon, title: 'Free to play', body: 'Free coins that refill daily. Jump straight in, no signup wall to start.' },
 ];
 
 export function Landing() {
@@ -45,8 +45,8 @@ export function Landing() {
         <div>
           <p className="eyebrow text-grass">Your live World Cup companion</p>
           <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-display text-chalk sm:text-5xl">
-            Don’t just watch the match —{' '}
-            <span className="text-grass">call it, live.</span>
+            Don’t just watch the match!{' '}
+            <span className="text-grass">Call it, live.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-chalk-dim">
             Open Field during a match and play a Flash Pool on the next five minutes. Build a streak, climb
@@ -67,16 +67,6 @@ export function Landing() {
             <span className="eyebrow">England v France</span>
             <span className="tabular text-xs font-bold text-flare-2">LIVE 67'</span>
           </div>
-        </div>
-      </section>
-
-      {/* what it is */}
-      <section className="mx-auto w-full max-w-[1100px] px-5 py-6">
-        <div className="rounded-card-lg border border-edge bg-turf p-6 text-center">
-          <p className="mx-auto max-w-2xl text-lg font-semibold leading-relaxed text-chalk">
-            Field turns the phone already in your hand into a fast, social game. Every round is a Flash Pool —
-            a quick call on the next moment of play — and each result is proven real with match data anchored on Solana.
-          </p>
         </div>
       </section>
 
@@ -103,7 +93,7 @@ export function Landing() {
           {[
             ['1', 'A Flash Pool opens', 'A timed yes/no call on the next short stretch of play.'],
             ['2', 'You make the call', 'Tap your side and stake before it locks.'],
-            ['3', 'The feed settles it', 'You win or lose points — with a provably-fair receipt.'],
+            ['3', 'The feed settles it', 'You win or lose points with a provably-fair receipt.'],
           ].map(([n, t, b]) => (
             <div key={n} className="rounded-card border border-edge bg-turf p-5">
               <span className="tabular text-2xl font-extrabold text-grass">{n}</span>

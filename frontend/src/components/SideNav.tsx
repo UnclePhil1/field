@@ -31,7 +31,8 @@ export function SideNav() {
       <div className="mt-auto px-2 pt-6">
         <p className="eyebrow">For the fans</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          Don't just watch the match — <span className="font-semibold text-chalk-dim">call it, live.</span>
+          Don't just watch the match! <br/>
+          <span className="font-semibold text-chalk-dim">Call it, Live.</span>
         </p>
       </div>
     </aside>

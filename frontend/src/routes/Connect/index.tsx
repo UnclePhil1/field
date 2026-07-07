@@ -129,9 +129,6 @@ function UsernameForm({
       >
         {mode === 'register' ? 'Already have an account? Log in' : 'New here? Create an account'}
       </button>
-      <p className="mt-4 text-center text-[11px] leading-relaxed text-muted">
-        No wallet needed to play. You can connect one later to host or claim prizes.
-      </p>
     </form>
   );
 }
