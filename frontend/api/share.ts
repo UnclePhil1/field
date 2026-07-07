@@ -107,12 +107,29 @@ function bragCard(sp: URLSearchParams): Card {
   return { title, description: sub || 'Play along the match on FanField.', image: p.toString() };
 }
 
+// A Score Link card — the scoreline pick a player wants to show off.
+function scoreCard(sp: URLSearchParams): Card {
+  const home = (sp.get('home') || '').slice(0, 12);
+  const away = (sp.get('away') || '').slice(0, 12);
+  const hs = sp.get('hs') || '0';
+  const as = sp.get('as') || '0';
+  const mult = (sp.get('mult') || '').slice(0, 8);
+  const tag = (sp.get('tag') || 'Pick').slice(0, 16);
+  const p = new URLSearchParams({ type: 'scoreline', home, away, hs, as, mult, tag });
+  return {
+    title: `${home} ${hs}–${as} ${away} — my Score Link`,
+    description: `${tag} · ${mult}× on FanField. $1 pays $${mult} if the match lands exactly here. Pick yours.`,
+    image: p.toString(),
+  };
+}
+
 async function resolve(pathname: string, search: URLSearchParams): Promise<Card> {
   const parts = pathname.split('/').filter(Boolean); // ["match","123"]
   const [seg, id] = parts;
   let card: Card | null = null;
   try {
     if (seg === 'brag') return bragCard(search);
+    if (seg === 'score') return scoreCard(search);
     if (seg === 'match' && id) card = await matchCard(id, 'match');
     else if (seg === 'replay' && id) card = await matchCard(id, 'replay');
     else if (seg === 'tournaments' && id) card = await tournamentCard(id);

@@ -7,6 +7,7 @@ import { Live } from '../routes/Live';
 import { MatchRoom } from '../routes/MatchRoom';
 import { SquadJoin } from '../routes/Squad';
 import { Brag } from '../routes/Brag';
+import { Score } from '../routes/Score';
 import { Replay } from '../routes/Replay';
 import { ReplayMatch } from '../routes/Replay/Match';
 import { Leaderboard } from '../routes/Leaderboard';
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
   // Public share targets (viewable without an account).
   { path: '/squad/:code', element: <SquadJoin /> },
   { path: '/brag', element: <Brag /> },
+  { path: '/score', element: <Score /> },
   // Authenticated platform — guarded by wallet + username. Home is /play.
   {
     element: <RequireAuth />,

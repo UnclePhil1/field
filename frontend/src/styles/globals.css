@@ -112,11 +112,25 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ---- Themed scrollbars — field green on a deep-pitch track ---- */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--grass-rgb)) rgb(var(--pitch-deep-rgb)); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgb(var(--pitch-deep-rgb)); border-radius: 999px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(rgb(var(--grass-deep-rgb)), rgb(var(--grass-rgb)));
+  border-radius: 999px;
+  border: 2px solid rgb(var(--pitch-deep-rgb));
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--grass-rgb)); }
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+
 /* ---- Sheet (slide-in drawer) ---- */
 @keyframes sheet-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes sheet-in-bottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
 .sheet-panel { animation: sheet-in-right 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.sheet-panel-bottom { animation: sheet-in-bottom 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 .sheet-overlay { animation: overlay-in 0.2s ease; }
 @media (prefers-reduced-motion: reduce) {
-  .sheet-panel, .sheet-overlay { animation: none; }
+  .sheet-panel, .sheet-panel-bottom, .sheet-overlay { animation: none; }
 }

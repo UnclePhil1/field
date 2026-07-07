@@ -11,7 +11,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: '/play', label: 'Matches', Icon: PitchIcon, match: (p) => p === '/play' || p.startsWith('/lobby') },
-  { to: '/live', label: 'Live Matches', Icon: PlayIcon, match: (p) => p.startsWith('/live') || p.startsWith('/match') },
+  { to: '/live', label: 'Live Game', Icon: PlayIcon, match: (p) => p.startsWith('/live') || p.startsWith('/match') },
   { to: '/tournaments', label: 'Battles', Icon: TrophyIcon, match: (p) => p.startsWith('/tournaments') },
   { to: '/board', label: 'Board', Icon: BoardIcon, match: (p) => p.startsWith('/board') },
   { to: '/you', label: 'You', Icon: YouIcon, match: (p) => p.startsWith('/you') },

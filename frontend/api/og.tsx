@@ -51,7 +51,12 @@ export default async function handler(req: Request) {
   let pill: { text: string; bg: string; fg: string; dot?: boolean };
   let sub: string;
 
-  if (type === 'brag') {
+  if (type === 'scoreline') {
+    headline = hasScore ? `${home} ${hs}–${as} ${away}` : `${home} v ${away}`;
+    pill = { text: (q(url, 'tag') || 'PICK').toUpperCase(), bg: 'rgba(57,211,83,0.14)', fg: GRASS };
+    const mult = q(url, 'mult');
+    sub = mult ? `Exact score · ${mult}× · $1 pays $${mult}` : 'Exact score pick';
+  } else if (type === 'brag') {
     headline = title || 'Called it.';
     pill = { text: (q(url, 'tag') || 'FANFIELD').toUpperCase(), bg: 'rgba(57,211,83,0.14)', fg: GRASS };
     sub = q(url, 'sub');
@@ -132,7 +137,9 @@ export default async function handler(req: Request) {
         {/* footer tagline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', fontSize: '30px', fontWeight: 600, color: CHALK }}>
-            {type === 'tournament' ? 'Join the battle — free 1,000-pt stack.' : 'Call the next moment.'}
+            {type === 'tournament' ? 'Join the battle — free 1,000-pt stack.'
+              : type === 'scoreline' ? 'Pick the nastiest scoreline on FanField.'
+              : 'Call the next moment.'}
           </div>
           <div style={{ display: 'flex', fontSize: '26px', fontWeight: 600, color: MUTED }}>fanfield.xyz</div>
         </div>

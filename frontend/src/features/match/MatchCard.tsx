@@ -6,10 +6,13 @@ import { Flag } from '../../components/Flag';
 import { ArrowIcon } from '../../components/Icons';
 import { phaseLabel, untilKickoff } from '../../lib/format';
 import { matchPredictApi } from '../../lib/matchPredictApi';
+import { BottomSheet } from '../../components/BottomSheet';
+import { ScoreLinkDrawer } from '../scorelink/ScoreLinkDrawer';
 
 export function MatchCard({ match }: { match: Match }) {
   const live = match.status === 'live';
   const [fanWar, setFanWar] = useState<{ home: number; away: number } | null>(null);
+  const [scoreOpen, setScoreOpen] = useState(false);
 
   // Teaser: how the crowd is leaning (from Call the Score side-picks). Best-effort.
   useEffect(() => {
@@ -41,7 +44,7 @@ export function MatchCard({ match }: { match: Match }) {
       </div>
     );
 
-  return (
+  const card = (
     <Wrapper>
       <span className="arc-b" aria-hidden />
       <div className="flex items-center justify-between">
@@ -90,7 +93,27 @@ export function MatchCard({ match }: { match: Match }) {
           <span className="text-xs font-semibold text-muted">Not started</span>
         )}
       </div>
+
+      {!live && (
+        <button
+          onClick={() => setScoreOpen(true)}
+          className="mt-3 w-full rounded-[12px] border border-grass/40 bg-grass/10 py-2 text-xs font-bold text-grass transition-colors hover:bg-grass/15"
+        >
+          Score Link — pick the scoreline
+        </button>
+      )}
     </Wrapper>
+  );
+
+  return (
+    <>
+      {card}
+      {scoreOpen && (
+        <BottomSheet open onClose={() => setScoreOpen(false)} title="Score Link">
+          <ScoreLinkDrawer match={match} onClose={() => setScoreOpen(false)} />
+        </BottomSheet>
+      )}
+    </>
   );
 }
 
