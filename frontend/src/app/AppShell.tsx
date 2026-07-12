@@ -12,7 +12,7 @@ import { FloatingChat } from '../features/chat/FloatingChat';
  */
 export function AppShell() {
   return (
-    <div className="app-backdrop flex h-dvh flex-col overflow-hidden">
+    <div className="dot-grid bg-pitch flex h-dvh flex-col overflow-hidden">
       <div className="mx-auto flex w-full max-w-[1320px] min-h-0 flex-1">
         {/* SideNav stays fixed — it does not scroll with content */}
         <SideNav />

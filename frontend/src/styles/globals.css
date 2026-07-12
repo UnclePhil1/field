@@ -124,6 +124,70 @@
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--grass-rgb)); }
 .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
+/* ---- Xora-style design language (bold display + boxed mono labels) ---- */
+/* faint dot grid backdrop */
+.dot-grid {
+  background-image: radial-gradient(rgba(232, 240, 234, 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+/* huge, heavy, condensed uppercase headline */
+.display {
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+}
+/* headline gradient — white into field green */
+.text-grass-gradient {
+  background: linear-gradient(170deg, #f2fff7 0%, #eafff2 30%, rgb(var(--grass-rgb)) 115%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-chalk-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, rgb(var(--chalk-dim-rgb)) 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* small boxed mono stat label (LOCK-UP / NONE) */
+.stat-box {
+  border: 1px solid rgb(var(--edge-2-rgb));
+  background: rgba(6, 13, 9, 0.72);
+  border-radius: 10px;
+  padding: 9px 13px;
+  backdrop-filter: blur(4px);
+}
+.stat-box__k {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgb(var(--muted-rgb));
+}
+.stat-box__v {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 17px;
+  color: rgb(var(--chalk-rgb));
+}
+/* boxed section label pill (XORA COIN) */
+.chip-label {
+  display: inline-block;
+  border: 1px solid rgb(var(--edge-2-rgb));
+  background: rgb(var(--turf-rgb));
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgb(var(--chalk-dim-rgb));
+}
+
 /* ---- Sheet (slide-in drawer) ---- */
 @keyframes sheet-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes sheet-in-bottom { from { transform: translateY(100%); } to { transform: translateY(0); } }

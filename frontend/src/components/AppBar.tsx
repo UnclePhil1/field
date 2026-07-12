@@ -58,7 +58,7 @@ export function WalletChip() {
     navigate('/', { replace: true });
   }
 
-  const label = username ? `@${username}` : wallet ? shortAddress(wallet) : 'Account';
+  const label = username ? username : wallet ? shortAddress(wallet) : 'Account';
   return (
     <button
       onClick={handleSignOut}
