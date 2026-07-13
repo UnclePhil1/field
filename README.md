@@ -67,11 +67,9 @@ that keeps players coming back before, during, and after the whistle.
 
 ### Revenue
 
-FanField earns money in two clear ways, and neither of them turns the game into
-betting.
+FanField earns money in two clear ways.
 
-The first way is coin top-ups. The game is free, and every player gets a daily
-coin refill. When a player runs low and does not want to wait for the refill, they
+The first way is coin top-ups. The game is free, and every player/user gets a coin on signup. When a player runs low on coins, they
 can buy more. The starter pack is 1,000 coins for 3 dollars, paid in USDC or SOL,
 and it opens up automatically once a balance drops below 100. Coins are only used
 to play inside the app and can never be cashed out, so buying them is the same as
