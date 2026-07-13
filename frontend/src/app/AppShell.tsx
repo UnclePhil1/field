@@ -4,6 +4,7 @@ import { SideNav } from '../components/SideNav';
 import { BottomNav } from '../components/BottomNav';
 import { PushToast } from '../components/PushToast';
 import { FloatingChat } from '../features/chat/FloatingChat';
+import { AngelButton } from '../features/voice/AngelButton';
 
 export function AppShell() {
   return (
@@ -19,6 +20,7 @@ export function AppShell() {
       </div>
       <BottomNav />
       <FloatingChat />
+      <AngelButton />
       <PushToast />
     </div>
   );

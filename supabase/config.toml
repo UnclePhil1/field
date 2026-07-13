@@ -43,3 +43,6 @@ verify_jwt = false
 
 [functions.score-link]
 verify_jwt = false
+
+[functions.voice-session]
+verify_jwt = false

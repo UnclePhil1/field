@@ -8,6 +8,7 @@ import { MatchRoom } from '../routes/MatchRoom';
 import { SquadJoin } from '../routes/Squad';
 import { Brag } from '../routes/Brag';
 import { Score } from '../routes/Score';
+import { AngelPage } from '../routes/Angel';
 import { Replay } from '../routes/Replay';
 import { ReplayMatch } from '../routes/Replay/Match';
 import { Leaderboard } from '../routes/Leaderboard';
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/play', element: <Lobby /> },
       { path: '/live', element: <Live /> },
+      { path: '/angel', element: <AngelPage /> },
       { path: '/match/:id', element: <MatchRoom /> },
       { path: '/replay', element: <Replay /> },
       { path: '/replay/:id', element: <ReplayMatch /> },
