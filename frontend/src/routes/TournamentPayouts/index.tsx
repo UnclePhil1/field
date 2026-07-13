@@ -8,7 +8,6 @@ import { shortWallet, payoutCountdown, explorerTx, formatPrize } from '../../fea
 import { CheckIcon } from '../../components/Icons';
 import type { Payout, Tournament } from '../../types/tournament';
 
-/** Host-only dashboard: pay winners off-app, then mark paid with the tx sig. */
 export function TournamentPayouts() {
   const { id = '' } = useParams();
   const { userId } = useAuth();
@@ -24,7 +23,6 @@ export function TournamentPayouts() {
   useEffect(() => { refresh(); }, [refresh]);
 
   if (!loaded || !t) return <div className="mx-auto max-w-[680px] px-4 py-8 text-muted">Loading…</div>;
-  // Host-only page: anyone else is bounced to the public detail view.
   if (!userId || userId !== t.hostUserId) return <Navigate to={`/tournaments/${id}`} replace />;
   const deadline = payoutCountdown(t.payoutDeadline);
 

@@ -27,7 +27,6 @@ export function Landing() {
 
   return (
     <div className="dot-grid min-h-dvh bg-pitch text-chalk">
-      {/* top bar */}
       <header className="mx-auto flex w-full max-w-[1180px] items-center justify-between px-5 py-5 sm:px-8">
         <span className="inline-flex items-center gap-1 text-2xl font-extrabold tracking-tightest">
           FanField<span className="text-grass">.</span>
@@ -37,7 +36,6 @@ export function Landing() {
         </Link>
       </header>
 
-      {/* hero */}
       <section className="mx-auto grid w-full max-w-[1180px] items-center gap-10 px-5 py-6 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
         <div>
           <span className="chip-label">Live · World Cup</span>
@@ -61,7 +59,6 @@ export function Landing() {
           </div>
         </div>
 
-        {/* hero visual: the pitch, framed, with floating stat boxes (Xora style) */}
         <div className="relative">
           <div className="overflow-hidden rounded-card-lg border border-edge-2 bg-turf p-3">
             <Pitch events={[]} />
@@ -77,7 +74,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* what you get */}
       <section className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8">
         <div className="text-center">
           <span className="chip-label">The game</span>
@@ -101,7 +97,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* how a round works */}
       <section id="how" className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8">
         <span className="chip-label">How a round works</span>
         <div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-card-lg border border-edge bg-edge sm:grid-cols-3">
@@ -119,7 +114,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* final CTA */}
       <section className="mx-auto w-full max-w-[1180px] px-5 py-20 text-center sm:px-8">
         <h2 className="display text-5xl sm:text-7xl">
           <span className="text-chalk-gradient">Ready to</span> <span className="text-grass-gradient">call it?</span>
@@ -136,8 +130,6 @@ export function Landing() {
     </div>
   );
 }
-
-/* ---------- local Xora-style pieces ---------- */
 
 function PillButton({ children, solid, icon, large }: { children: ReactNode; solid?: boolean; icon?: boolean; large?: boolean }) {
   return (

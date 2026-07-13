@@ -1,11 +1,8 @@
 /* eslint-disable */
-// Draws the preview image (1200x630 PNG) for shared links. Query params decide
-// what the card shows for a match, tournament or replay.
 import { ImageResponse } from '@vercel/og';
 
 export const config = { runtime: 'edge' };
 
-// Field brand tokens (mirror of the app's CSS variables).
 const PITCH = '#091310';
 const PITCH_2 = '#0c1a14';
 const GRASS = '#39d353';
@@ -46,7 +43,6 @@ export default async function handler(req: Request) {
 
   const hasScore = hs !== '' && as !== '';
 
-  // ── headline + pill per share type ──
   let headline: string;
   let pill: { text: string; bg: string; fg: string; dot?: boolean };
   let sub: string;
@@ -96,10 +92,8 @@ export default async function handler(req: Request) {
           position: 'relative',
         }}
       >
-        {/* subtle grass edge glow */}
         <div style={{ position: 'absolute', left: 0, top: 0, width: '10px', height: '630px', background: GRASS, display: 'flex' }} />
 
-        {/* header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', fontSize: '40px', fontWeight: 800, letterSpacing: '-1px' }}>
             <span>Field</span>
@@ -124,7 +118,6 @@ export default async function handler(req: Request) {
           </div>
         </div>
 
-        {/* headline */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', fontSize: headline.length > 22 ? '84px' : '108px', fontWeight: 800, lineHeight: 1.02, letterSpacing: '-2px' }}>
             {headline}
@@ -134,7 +127,6 @@ export default async function handler(req: Request) {
           ) : null}
         </div>
 
-        {/* footer tagline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', fontSize: '30px', fontWeight: 600, color: CHALK }}>
             {type === 'tournament' ? 'Join the battle — free 1,000-pt stack.'

@@ -1,9 +1,3 @@
-// wallet-auth — verify a Solana wallet signature and return a Supabase session.
-//
-// Flow: the browser connects a wallet, signs a login message, and POSTs
-// { wallet, message, signature }. We verify the signature with tweetnacl, then
-// map the wallet to a deterministic Supabase auth user (creating it on first
-// sight) and return a real session. The wallet IS the account.
 import nacl from 'npm:tweetnacl@1.0.3';
 import bs58 from 'npm:bs58@5.0.0';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -12,15 +6,12 @@ import { json, preflight } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-// Server secret used to derive each wallet's Supabase password. Set as a secret.
 const AUTH_SECRET = Deno.env.get('WALLET_AUTH_SECRET') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 function walletEmail(wallet: string) {
   return `${wallet.toLowerCase()}@field.wallet`;
 }
 
-// Deterministic password = HMAC-SHA256(AUTH_SECRET, wallet). Stable per wallet,
-// never leaves the server, lets us mint a session via signInWithPassword.
 async function walletPassword(wallet: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -37,7 +28,6 @@ function verifySignature(wallet: string, message: string, signature: string): bo
   try {
     const pub = bs58.decode(wallet);
     const msg = new TextEncoder().encode(message);
-    // accept base58 or base64 signatures
     let sig: Uint8Array;
     try {
       sig = bs58.decode(signature);
@@ -73,7 +63,6 @@ Deno.serve(async (req) => {
   const email = walletEmail(wallet);
   const password = await walletPassword(wallet);
 
-  // Look up existing profile → user. Create the auth user on first login.
   const { data: existing } = await db.from('profiles').select('id, username').eq('wallet', wallet).maybeSingle();
 
   if (!existing) {
@@ -90,7 +79,6 @@ Deno.serve(async (req) => {
     if (profErr) return json({ error: `could not create profile: ${profErr.message}` }, 500);
   }
 
-  // Mint a session with the anon client (returns access + refresh tokens).
   const authClient = createClient(SUPABASE_URL, ANON_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });

@@ -1,7 +1,4 @@
-/* Field theme tokens — the contract. Components reference these only.
-   Never hardcode hex in a component; add nothing off-palette here. */
 :root {
-  /* surfaces */
   --pitch: #091310;          /* app background          */
   --pitch-deep: #060d0a;     /* deepest / app backdrop  */
   --turf: #0e1c14;           /* card / panel surface    */
@@ -12,25 +9,18 @@
   --edge-2: #244a30;         /* stronger border / outline */
   --line: rgba(43, 212, 107, 0.14); /* faint chalk/pitch line */
 
-  /* ink */
   --chalk: #eaf3ec;          /* primary text            */
   --chalk-dim: #a6bbad;      /* secondary text          */
   --muted: #6e8478;          /* tertiary / labels       */
 
-  /* brand */
   --grass: #2bd46b;          /* primary: actions, win, verified, the "dot" */
   --grass-deep: #16a34a;     /* primary pressed / deep glow */
   --flare: #ff6a00;          /* LIVE, countdown urgency, streak fire */
   --flare-2: #ff9248;        /* flare text on dark      */
   --ink: #05100a;            /* text ON grass buttons   */
 
-  /* focus ring (derived from grass, kept here so it stays on-palette) */
   --focus: rgba(43, 212, 107, 0.65);
 
-  /* ---- RGB channel mirrors of the tokens above ----
-     The hex values are the canonical palette (used directly in CSS/SVG).
-     These channel triplets exist only so Tailwind can apply alpha, e.g.
-     `bg-grass/12` -> rgb(var(--grass-rgb) / 0.12). Keep them in sync. */
   --pitch-rgb: 9 19 16;
   --pitch-deep-rgb: 6 13 10;
   --turf-rgb: 14 28 20;

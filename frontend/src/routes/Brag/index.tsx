@@ -1,8 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/Button';
 
-// Landing for a shared "brag" link. Shows the moment card and invites the viewer
-// to play. The image itself is rendered by /api/og (works on the deployed site).
 export function Brag() {
   const [params] = useSearchParams();
   const title = params.get('title') || 'Called it on FanField';

@@ -1,6 +1,3 @@
-// FCM HTTP v1 sender (no firebase-admin). Mints an OAuth token from the service
-// account with Web Crypto and posts messages. Set FIREBASE_SERVICE_ACCOUNT (the
-// full service-account JSON) as an Edge Function secret to activate.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 interface ServiceAccount {
@@ -19,10 +16,8 @@ export interface PushPayload {
 
 let cachedToken: { token: string; exp: number } | null = null;
 
-/** True only when the service account is configured — gate dispatch on this. */
 export const fcmEnabled = !!Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
 
-/** Check a user's notification preferences (defaults to on if no row). */
 // deno-lint-ignore no-explicit-any
 export async function prefAllows(db: SupabaseClient, userId: string, check: (p: any) => boolean): Promise<boolean> {
   const { data } = await db.from('notification_preferences').select('*').eq('user_id', userId).maybeSingle();
@@ -83,7 +78,6 @@ async function accessToken(sa: ServiceAccount): Promise<string> {
   return cachedToken.token;
 }
 
-/** Send a push to every registered token of a user; prune dead tokens. */
 export async function notifyUser(db: SupabaseClient, userId: string, payload: PushPayload): Promise<void> {
   const sa = serviceAccount();
   if (!sa) return; // not configured → no-op
@@ -111,7 +105,6 @@ export async function notifyUser(db: SupabaseClient, userId: string, payload: Pu
       body: JSON.stringify(message),
     });
     if (res.status === 404 || res.status === 400) {
-      // UNREGISTERED / invalid → prune
       const err = await res.json().catch(() => ({}));
       const code = err?.error?.details?.[0]?.errorCode ?? err?.error?.status;
       if (code === 'UNREGISTERED' || res.status === 404) {

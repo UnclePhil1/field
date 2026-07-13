@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/Button';
 
-// Landing for a shared Score Link. Shows the scoreline card and lets anyone
-// download it. The image is rendered by /api/og on the deployed site.
 export function Score() {
   const [params] = useSearchParams();
   const home = params.get('home') || '';

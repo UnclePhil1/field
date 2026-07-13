@@ -1,13 +1,7 @@
-// engine-tick — the heartbeat. Runs every minute (pg_cron → pg_net).
-// 1. Sync World Cup fixtures from TxLINE devnet into `matches`.
-// 2. Advance live matches (clock / phase / score) best-effort from TxLINE scores.
-// 3. Spawn a fresh prediction card on each live match that has none open.
-// 4. Settle cards whose window has closed, write settlements + receipts, and
-//    update each caller's coins/streak. If the feed can't resolve a card
-//    fairly, it VOIDS (coins returned, streak preserved) — per the spec.
 import { admin } from '../_shared/supabase.ts';
 import { json } from '../_shared/cors.ts';
-import { getSession, fetchFixtures, fetchScores, fetchOdds, fetchScoresHistorical, type TxFixture } from '../_shared/txline.ts';
+import { getSession, fetchFixtures, fetchScores, fetchOdds, fetchScoresHistorical, fetchStatValidation, type TxFixture } from '../_shared/txline.ts';
+import { merkleRootFrom } from '../_shared/proof.ts';
 import { generateCard, isLivePhase, type MatchPhase } from '../_shared/cards.ts';
 import { stageFor } from '../_shared/stage.ts';
 import { impliedWinProbability, multiplierFromProb } from '../_shared/odds.ts';
@@ -21,8 +15,6 @@ const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const WC_COMPETITION_ID = Number(Deno.env.get('TXLINE_COMPETITION_ID') ?? '0') || undefined;
 const CARD_WINDOW_SECONDS = 300;
 
-// On-chain context for receipts. The TxODDS oracle program anchors the Merkle
-// roots; we link players to it on the Solana explorer so the proof is trackable.
 const SOLANA_CLUSTER = Deno.env.get('SOLANA_CLUSTER') ?? 'mainnet-beta';
 const TXODDS_PROGRAM_ID =
   Deno.env.get('TXLINE_PROGRAM_ID') ?? '9ExbZjAapQww1vfcisDmrngPinHTEfpjYRWMunJgcKaA';
@@ -44,11 +36,6 @@ function phaseForMinute(minute: number): MatchPhase {
 
 type Entry = Record<string, any>;
 
-/**
- * The current state = the latest entry that actually carries a game StatusId.
- * TxODDS interleaves "scheduled" placeholder entries (no StatusId/Clock) that
- * can have the highest timestamp — trusting those made finished games look live.
- */
 function pickLatest(scores: unknown[]): Entry | null {
   const ts = (r: Entry) => Number(r?.Ts ?? r?.ts ?? 0);
   let best: Entry | null = null; // latest WITH a StatusId
@@ -60,14 +47,12 @@ function pickLatest(scores: unknown[]): Entry | null {
   return best ?? anyLatest;
 }
 
-/** Read a cumulative stat value (by key) from a scores entry's Stats map. */
 function statOf(entry: Entry | null, key: number): number | null {
   const s = (entry?.Stats ?? entry?.stats) as Record<string, unknown> | undefined;
   if (s && String(key) in s) return Number(s[String(key)]);
   return null;
 }
 
-// Game-phase id (StatusId) → our phase enum + match status.
 const FINISHED_IDS = new Set([5, 10, 13, 15, 16, 17, 18]);
 const UPCOMING_IDS = new Set([1, 19]);
 function statusFromStatusId(id: number): 'upcoming' | 'live' | 'finished' {
@@ -87,7 +72,6 @@ function phaseFromStatusId(id: number): MatchPhase {
   }
 }
 
-/** Real match minute from the feed clock (extrapolated to now if running). */
 function liveMinute(entry: Entry | null, phase: MatchPhase): number {
   if (phase === 'PRE') return 0;
   if (phase === 'HT') return 45;
@@ -99,7 +83,6 @@ function liveMinute(entry: Entry | null, phase: MatchPhase): number {
   return Math.max(0, Math.min(130, Math.floor(secs / 60)));
 }
 
-// TxLINE stat keys we surface as pitch events → {kind, side, label, redCard}.
 const EVENT_KEYS: Record<number, { kind: 'goal' | 'card' | 'corner'; side: 'home' | 'away'; label: string; red?: boolean }> = {
   1: { kind: 'goal', side: 'home', label: 'Goal' },
   2: { kind: 'goal', side: 'away', label: 'Goal' },
@@ -111,17 +94,13 @@ const EVENT_KEYS: Record<number, { kind: 'goal' | 'card' | 'corner'; side: 'home
   8: { kind: 'corner', side: 'away', label: 'Corner' },
 };
 
-// Honest, illustrative positions on the pitch (home attacks toward x≈0.9).
 function spotFor(kind: 'goal' | 'card' | 'corner', side: 'home' | 'away'): { x: number; y: number } {
   const r = () => Math.random();
   if (kind === 'goal') return { x: side === 'home' ? 0.96 : 0.04, y: 0.42 + r() * 0.16 };
   if (kind === 'corner') return { x: side === 'home' ? 0.97 : 0.03, y: r() > 0.5 ? 0.08 : 0.92 };
-  // card: in that team's own half
   return { x: side === 'home' ? 0.18 + r() * 0.22 : 0.6 + r() * 0.22, y: 0.2 + r() * 0.6 };
 }
 
-
-// Users to alert for a match: anyone who has played it or is following it.
 async function interestedUsers(db: any, matchId: string): Promise<string[]> {
   const set = new Set<string>();
   const { data: cards } = await db.from('prediction_cards').select('id').eq('match_id', matchId);
@@ -136,7 +115,6 @@ async function interestedUsers(db: any, matchId: string): Promise<string[]> {
   return [...set];
 }
 
-/** Keep only users whose prefs allow `check` (default on when no row exists). */
 async function allowed(db: any, userIds: string[], check: (p: any) => boolean): Promise<string[]> {
   if (!userIds.length) return [];
   const { data: prefs } = await db.from('notification_preferences').select('*').in('user_id', userIds);
@@ -149,34 +127,22 @@ async function allowed(db: any, userIds: string[], check: (p: any) => boolean): 
   });
 }
 
-/** Everyone who has connected Telegram — the audience for match-event pings. */
 async function linkedUserIds(db: any): Promise<string[]> {
   const { data } = await db.from('telegram_links').select('user_id');
   return (data ?? []).map((r: any) => r.user_id);
 }
 
-/**
- * Send one match event everywhere it should go: Telegram to every connected user
- * (`tg`), and the in-app inbox to the people actually playing/following (`inbox`).
- * Both are pre-filtered by preference. Best-effort — a failure never blocks a tick.
- */
 async function fanOut(db: any, tg: string[], inbox: string[], payload: { title: string; body?: string; url?: string }, kind: string): Promise<void> {
   if (tg.length) await broadcastTelegram(db, tg, payload).catch(() => {});
   for (const uid of inbox) await notifyInbox(db, uid, { ...payload, kind }).catch(() => {});
 }
 
-/** Minute from a scores entry's clock (0–130), best-effort. */
 function clockMinute(entry: Entry): number | null {
   const c = entry?.Clock;
   if (!c) return null;
   return Math.max(0, Math.min(130, Math.floor(Number(c.Seconds ?? 0) / 60)));
 }
 
-/**
- * Rebuild a finished match's full event timeline from the TxLINE historical feed
- * so its replay reconstructs the real final score. Replaces any partial events the
- * live loop recorded. Returns false if history isn't available yet (retry later).
- */
 async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean> {
   let hist: unknown[] = [];
   try {
@@ -213,7 +179,6 @@ async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean>
     }
   }
 
-  // Replace partial live events with the complete reconstruction.
   await db.from('match_events').delete().eq('match_id', m.id);
   if (events.length) await db.from('match_events').insert(events);
   await db.from('matches').update({ replay_built: true, home_score: finalHome, away_score: finalAway }).eq('id', m.id);
@@ -221,7 +186,6 @@ async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean>
 }
 
 Deno.serve(async (req) => {
-  // Only the scheduler (or an operator with the secret) may run the engine.
   if (CRON_SECRET && req.headers.get('x-cron-secret') !== CRON_SECRET) {
     return json({ error: 'forbidden' }, 403);
   }
@@ -229,7 +193,6 @@ Deno.serve(async (req) => {
   const db = admin();
   const log: Record<string, unknown> = {};
 
-  // ── TxLINE session (graceful: no token yet ⇒ skip feed work, app stays up) ──
   let session;
   try {
     session = await getSession(db);
@@ -238,21 +201,15 @@ Deno.serve(async (req) => {
     return json({ ok: true, ...log });
   }
 
-  // ── 1. Sync fixtures → matches ──
   try {
     const fixtures: TxFixture[] = await fetchFixtures(session, WC_COMPETITION_ID);
     const now = Date.now();
-    // Preserve real terminal status: never downgrade a finished/voided match back
-    // to "live" via the wall-clock guess below — the live loop owns that via the feed.
     const { data: existing } = await db.from('matches').select('id, status');
     const terminal = new Set((existing ?? []).filter((m) => m.status === 'finished' || m.status === 'voided').map((m) => m.id));
     for (const f of fixtures) {
       const id = String(f.FixtureId);
       const start = Number(f.StartTime);
       const elapsedMin = Math.floor((now - start) / 60000);
-      // Wall-clock is only an INITIAL guess to get a started match into the live
-      // loop; the loop then confirms phase/finish from the real feed and the
-      // terminal set above stops it ever flipping back.
       const status = terminal.has(id)
         ? (existing!.find((m) => m.id === id)!.status as 'finished' | 'voided')
         : now < start ? 'upcoming' : elapsedMin <= 180 ? 'live' : 'finished';
@@ -283,10 +240,8 @@ Deno.serve(async (req) => {
     log.fixtures = `error: ${e instanceof Error ? e.message : e}`;
   }
 
-  // Everyone who connected Telegram — the audience for match-event pings.
   const linkedAll = telegramEnabled ? await linkedUserIds(db) : [];
 
-  // ── Pre-match reminders: ping at 1h, 30m, 10m, 5m, and 1m before kickoff ──
   const PRE_WINDOWS = [60, 30, 10, 5, 1];
   try {
     const now = Date.now();
@@ -303,7 +258,6 @@ Deno.serve(async (req) => {
       while (stage < PRE_WINDOWS.length && minsLeft <= PRE_WINDOWS[stage]) { fired.push(PRE_WINDOWS[stage]); stage++; }
       if (fired.length === 0) continue;
       await db.from('matches').update({ pre_stage: stage }).eq('id', um.id);
-      // If the engine caught up across several windows, only ping the nearest one.
       const w = fired[fired.length - 1];
       const label = w >= 60 ? '1 hour' : `${w} minute${w === 1 ? '' : 's'}`;
       const interested = await interestedUsers(db, um.id);
@@ -317,7 +271,6 @@ Deno.serve(async (req) => {
     }
   } catch { /* reminders are best-effort */ }
 
-  // ── Work the live matches ──
   const { data: liveMatches } = await db
     .from('matches')
     .select('id, txline_fixture_id, home_code, away_code, home_name, away_name, stage, phase, minute, stat_snapshot, kickoff_notified, ft_notified')
@@ -329,7 +282,6 @@ Deno.serve(async (req) => {
       if (m.txline_fixture_id) scores = await fetchScores(session, Number(m.txline_fixture_id));
     } catch { /* tolerate; cards in this window will void */ }
 
-    // ── 2. Authoritative clock/phase/score/cards from the real feed state ──
     const latest = pickLatest(scores);
     if (latest) {
       const statusId = Number(latest.StatusId ?? 0);
@@ -351,11 +303,9 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       }).eq('id', m.id);
 
-      // Match kicked off → flip its tournaments to live (also closes joining).
       if (realStatus === 'live') {
         await db.from('tournaments').update({ status: 'live' }).eq('match_id', m.id).eq('status', 'upcoming');
 
-        // Kick-off broadcast (once): Telegram to all connected users, inbox to players.
         if (!m.kickoff_notified) {
           await db.from('matches').update({ kickoff_notified: true }).eq('id', m.id);
           {
@@ -367,7 +317,6 @@ Deno.serve(async (req) => {
               url: `/match/${m.id}`,
             }, 'kickoff');
           }
-          // Any tournaments now live → tell participants play is open.
           const { data: liveTours } = await db.from('tournaments').select('id, title').eq('match_id', m.id).eq('status', 'live');
           for (const t of liveTours ?? []) {
             const { data: parts } = await db.from('tournament_participants').select('user_id').eq('tournament_id', t.id);
@@ -381,12 +330,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Match abandoned/cancelled/coverage-cancelled → void its tournaments (no prize owed).
       if ([15, 16, 17, 18].includes(statusId)) {
         await db.from('tournaments').update({ status: 'voided' })
           .eq('match_id', m.id).in('status', ['upcoming', 'live', 'settling']);
       } else if (realStatus === 'finished') {
-        // Full-time broadcast (once) with the final score.
         if (!m.ft_notified) {
           await db.from('matches').update({ ft_notified: true }).eq('id', m.id);
           {
@@ -399,7 +346,6 @@ Deno.serve(async (req) => {
             }, 'fulltime');
           }
         }
-        // Settle "Call the Score": exact score pays big, correct result pays small.
         const fh = statOf(latest, 1) ?? 0;
         const fa = statOf(latest, 2) ?? 0;
         const realResult = fh > fa ? 'home' : fh < fa ? 'away' : 'draw';
@@ -425,7 +371,6 @@ Deno.serve(async (req) => {
           await db.from('match_predictions').update({ settled: true, points }).eq('match_id', m.id).eq('user_id', c.user_id);
         }
 
-        // Settle Score Link: exact scoreline wins stake × locked multiplier.
         const { data: slPicks } = await db
           .from('score_link_picks')
           .select('id, user_id, home_goals, away_goals, stake, multiplier')
@@ -449,7 +394,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Match ended normally → finalize standings for its tournaments.
         const { data: tours } = await db
           .from('tournaments')
           .select('id')
@@ -468,7 +412,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── 2b. Emit pitch events for any stat that ticked up since last poll ──
     const prevSnap: Record<string, number> = (m.stat_snapshot as Record<string, number>) ?? {};
     const nextSnap: Record<string, number> = { ...prevSnap };
     const newEvents: Record<string, unknown>[] = [];
@@ -479,8 +422,6 @@ Deno.serve(async (req) => {
       if (current == null) continue;
       nextSnap[keyStr] = current;
       const prev = prevSnap[keyStr];
-      // Skip the very first observation (prev undefined) so we don't replay
-      // the whole pre-existing tally as a flood of events.
       if (prev == null || current <= prev) continue;
       const teamCode = def.side === 'home' ? m.home_code : m.away_code;
       for (let i = prev; i < current; i++) {
@@ -500,13 +441,10 @@ Deno.serve(async (req) => {
     if (newEvents.length) await db.from('match_events').insert(newEvents);
     await db.from('matches').update({ stat_snapshot: nextSnap }).eq('id', m.id);
 
-    // ── 2c. Announce each new event: Telegram to all connected users, inbox to
-    // the people playing/following this match. ──
     if (newEvents.length) {
       const interested = await interestedUsers(db, m.id);
       const hs = statOf(latest, 1) ?? 0;
       const as = statOf(latest, 2) ?? 0;
-      // Resolve pref-eligible Telegram + inbox audiences once per category.
       const tgCache: Record<string, string[]> = {};
       const inCache: Record<string, string[]> = {};
       const tgAud = async (cat: 'goals' | 'cards' | 'corners') => tgCache[cat] ??= await allowed(db, linkedAll, (p) => p.match_events?.[cat] !== false);
@@ -535,7 +473,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── 3. Settle due cards ──
     const { data: dueCards } = await db
       .from('prediction_cards')
       .select('*')
@@ -561,17 +498,29 @@ Deno.serve(async (req) => {
             ? `${card.subject_team} ${card.stat} verified at ${m.minute}′`
             : `No ${card.stat} for ${card.subject_team} in the window`;
 
+      const seq = Number(latest?.Seq ?? 0);
+      let merkleRoot = '—';
+      let merkleRootFull: string | null = null;
+      if (outcome != null && m.txline_fixture_id && card.txline_stat_key != null && seq > 0) {
+        try {
+          const validation = await fetchStatValidation(session, Number(m.txline_fixture_id), seq, Number(card.txline_stat_key));
+          const r = merkleRootFrom(validation);
+          merkleRoot = r.short;
+          merkleRootFull = r.full;
+        } catch { /* keep '—' */ }
+      }
+
       const receipt = {
         source: 'TxLINE live feed',
         statVerified: resolvedLabel,
-        merkleRoot: '—',
+        merkleRoot,
+        merkleRootFull,
         anchoredOn: CLUSTER_LABEL,
-        txRef: m.txline_fixture_id ? `fix:${m.txline_fixture_id}/key:${card.txline_stat_key}` : '—',
+        txRef: m.txline_fixture_id ? `fix:${m.txline_fixture_id}/seq:${seq}/key:${card.txline_stat_key}` : '—',
         explorerUrl: PROGRAM_EXPLORER_URL,
         cardId: card.id,
       };
 
-      // mark the card settled (or void)
       await db.from('prediction_cards').update({
         status: 'settled',
         outcome: outcome ?? null,
@@ -580,7 +529,6 @@ Deno.serve(async (req) => {
         txline_seq: Number(latest?.Seq ?? 0) || null,
       }).eq('id', card.id);
 
-      // settle every player's prediction on this card
       const { data: calls } = await db
         .from('predictions')
         .select('user_id, pick, stake')
@@ -595,7 +543,6 @@ Deno.serve(async (req) => {
         if (!prof) continue;
 
         if (outcome == null) {
-          // VOID — stake returned, streak preserved, no win/loss.
           await db.from('settlements').upsert({
             card_id: card.id,
             user_id: callRow.user_id,
@@ -633,8 +580,6 @@ Deno.serve(async (req) => {
           receipt,
         }, { onConflict: 'card_id,user_id' });
 
-        // notify "your call settled" across every channel (inbox + push + Telegram).
-        // Both outcomes include the streak so players feel the run build or break.
         if (await prefAllows(db, callRow.user_id, (p) => p.my_play?.settled !== false)) {
           const title = r.won ? `⚽ Your call hit — +${r.payout}` : '✕ Not this time';
           const streakLine = r.won
@@ -649,7 +594,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ── 3b. Settle tournament-mode wagers on this card (separate stacks) ──
       const { data: tcalls } = await db
         .from('tournament_predictions')
         .select('id, tournament_id, user_id, pick, stake')
@@ -663,7 +607,6 @@ Deno.serve(async (req) => {
           .eq('user_id', tc.user_id)
           .maybeSingle();
         if (!part) continue;
-        // void → no change; else odds-weighted (no per-tournament streak in v1). TODO: streak.
         let delta = 0;
         if (outcome != null) delta = tc.pick === outcome ? Math.round(tc.stake * card.multiplier) : -tc.stake;
         const newPoints = Math.max(0, part.points + delta);
@@ -673,7 +616,6 @@ Deno.serve(async (req) => {
           .eq('user_id', tc.user_id);
         await db.from('tournament_predictions').update({ settled: true }).eq('id', tc.id);
 
-        // tell the tournament player how their stack moved.
         if (outcome != null && await prefAllows(db, tc.user_id, (p) => p.my_play?.settled !== false)) {
           const won = tc.pick === outcome;
           await notifyAll(db, tc.user_id, {
@@ -686,7 +628,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── 4. Ensure one open card per live match ──
     const { count: openCount } = await db
       .from('prediction_cards')
       .select('id', { count: 'exact', head: true })
@@ -695,13 +636,10 @@ Deno.serve(async (req) => {
 
     if (!openCount || openCount === 0) {
       const phase = (m.phase as MatchPhase) ?? '2H';
-      // No new cards during half-time — predictions resume when the ball is in play.
       if (isLivePhase(phase) && phase !== 'HT') {
         const gen = generateCard({ phase, homeCode: m.home_code, awayCode: m.away_code, windowSeconds: CARD_WINDOW_SECONDS });
         const baseline = gen.txline_stat_key != null ? statOf(latest, gen.txline_stat_key) : null;
 
-        // Odds-weighted pricing (defensive): for goal cards, price off the live
-        // market's implied win probability when odds are available; else heuristic.
         let multiplier = gen.multiplier;
         let crowdYes = gen.crowd_yes;
         if (gen.stat === 'goal' && m.txline_fixture_id) {
@@ -731,7 +669,6 @@ Deno.serve(async (req) => {
           baseline_stat: baseline ?? 0,
         });
 
-        // A fresh Flash Pool is open — Telegram to connected users, inbox to players.
         {
           const tg = await allowed(db, linkedAll, (p) => p.my_play?.new_card !== false);
           const inbox = await allowed(db, await interestedUsers(db, m.id), (p) => p.my_play?.new_card !== false);
@@ -747,8 +684,6 @@ Deno.serve(async (req) => {
 
   log.liveMatches = liveMatches?.length ?? 0;
 
-  // ── Backfill replays for finished matches from the historical feed (a few per
-  // tick so the whole library fills in over a few minutes). ──
   try {
     const { data: toBuild } = await db
       .from('matches')

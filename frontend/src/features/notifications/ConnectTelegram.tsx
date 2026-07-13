@@ -11,7 +11,6 @@ function TelegramGlyph({ size = 18 }: { size?: number }) {
   );
 }
 
-/** Connect a Telegram chat so match/tournament alerts arrive there (free). */
 export function ConnectTelegram() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [tgUsername, setTgUsername] = useState<string | null>(null);
@@ -44,7 +43,6 @@ export function ConnectTelegram() {
       const l = await telegramApi.link();
       setLink(l);
       window.open(l.url, '_blank', 'noopener');
-      // Poll for the webhook to confirm the connection (up to ~2 min).
       let ticks = 0;
       pollRef.current = window.setInterval(async () => {
         ticks += 1;

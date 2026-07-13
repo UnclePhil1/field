@@ -40,7 +40,6 @@ function phaseForMinute(m: number): MatchPhase {
   return 'FT';
 }
 
-/** Steps a scripted match timeline on an accelerated clock, feeding the Pitch. */
 export function useReplay(timeline: ReplayEvent[]): ReplayState {
   const sorted = useMemo(() => [...timeline].sort((a, b) => a.minute - b.minute), [timeline]);
   const [minute, setMinute] = useState(0);
@@ -60,13 +59,11 @@ export function useReplay(timeline: ReplayEvent[]): ReplayState {
     if (timer.current != null) { clearInterval(timer.current); timer.current = null; }
   };
 
-  // advance the clock; emit events as their minute is reached
   useEffect(() => {
     if (!playing) { stop(); return; }
     timer.current = window.setInterval(() => {
       setMinute((m) => {
         const next = m + 1;
-        // emit all events at this minute
         while (emitted.current < sorted.length && sorted[emitted.current].minute <= next) {
           const ev = sorted[emitted.current++];
           const spot = spotFor(ev.kind, ev.side);

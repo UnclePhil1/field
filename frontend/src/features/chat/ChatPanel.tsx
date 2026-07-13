@@ -5,8 +5,6 @@ import { useAuth } from '../../app/AuthStore';
 
 const EMOJIS = ['⚽', '🔥', '😂', '😍', '😮', '😱', '😭', '👏', '👍', '👎', '🙌', '💪', '🎉', '🏆', '🥅', '🟨', '🟥', '🚩', '⏱️', '💔', '😤', '🤯', '🫡', '🇵🇹', '🇪🇸', '🇦🇷', '🇧🇷', '🇫🇷', '🇬🇧', '🇺🇸', '🥳', '💚'];
 
-// A live chat feed for one room (a match or a squad). History + live updates come
-// straight from the table; sends are guarded by the chat function.
 export function ChatPanel({ scope, scopeId, note }: { scope: ChatScope; scopeId: string; note: string }) {
   const { userId } = useAuth();
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);

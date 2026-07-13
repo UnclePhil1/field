@@ -4,8 +4,6 @@ import { StatLabel } from '../../components/StatLabel';
 import { Button } from '../../components/Button';
 import { YouIcon, ShareIcon, CheckIcon } from '../../components/Icons';
 
-// Squad: play this match with your friends. Create a room, share the link, and
-// everyone's calls land on one shared leaderboard.
 export function SquadPanel({ matchId }: { matchId: string }) {
   const [squad, setSquad] = useState<Squad | null | undefined>(undefined); // undefined = loading
   const [busy, setBusy] = useState(false);
@@ -45,7 +43,6 @@ export function SquadPanel({ matchId }: { matchId: string }) {
 
   if (squad === undefined) return <div className="h-32 animate-pulse rounded-card border border-edge bg-turf" />;
 
-  // No squad yet → explain the feature and let them start one.
   if (squad === null) {
     return (
       <section className="rounded-card border border-edge bg-turf p-4">

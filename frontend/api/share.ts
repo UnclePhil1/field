@@ -1,13 +1,7 @@
 /* eslint-disable */
-// Builds link previews for shared pages. Social apps don't run JavaScript, so the
-// single-page app shows them nothing. This handles /match/:id, /tournaments/:id
-// and /replay/:id, then returns index.html with the right title and image tags
-// filled in. Normal browsers get the same page and load the app as usual.
-// Reads use the public key only.
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const ANON = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || '';
-// Fixed origin so a spoofed Host header can't poison a cached preview.
 const CANONICAL = (process.env.APP_URL || 'https://www.fanfield.xyz').replace(/\/$/, '');
 
 function esc(s: string): string {
@@ -97,8 +91,6 @@ async function tournamentCard(id: string): Promise<Card | null> {
   return { title: `${t.title} — Prediction Battle`, description, image: p.toString() };
 }
 
-// A brag card is built purely from query params (no DB) — the win/streak the
-// player wants to show off.
 function bragCard(sp: URLSearchParams): Card {
   const title = (sp.get('title') || 'Called it on FanField').slice(0, 80);
   const sub = (sp.get('sub') || '').slice(0, 90);
@@ -107,7 +99,6 @@ function bragCard(sp: URLSearchParams): Card {
   return { title, description: sub || 'Play along the match on FanField.', image: p.toString() };
 }
 
-// A Score Link card — the scoreline pick a player wants to show off.
 function scoreCard(sp: URLSearchParams): Card {
   const home = (sp.get('home') || '').slice(0, 12);
   const away = (sp.get('away') || '').slice(0, 12);
@@ -152,7 +143,6 @@ export default async function handler(req: any, res: any) {
     const r = await fetch(`${CANONICAL}/index.html`, { headers: { 'x-share-render': '1' } });
     html = await r.text();
   } catch {
-    // As a last resort, ship a minimal shell so the link still previews.
     html = '<!doctype html><html><head></head><body><div id="root"></div></body></html>';
   }
 
@@ -179,7 +169,6 @@ export default async function handler(req: any, res: any) {
   html = html.replace('</head>', `${extra}</head>`);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  // Short shared cache so live scores refresh in unfurls without hammering origin.
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=120');
   res.status(200).send(html);
 }

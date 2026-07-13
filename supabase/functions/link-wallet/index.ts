@@ -1,5 +1,3 @@
-// link-wallet — attach a verified Solana wallet to the CURRENT account.
-// Enforces one wallet = one account (blocks if the wallet is used elsewhere).
 import nacl from 'npm:tweetnacl@1.0.3';
 import bs58 from 'npm:bs58@5.0.0';
 import { admin, getUser } from '../_shared/supabase.ts';
@@ -34,7 +32,6 @@ Deno.serve(async (req) => {
   if (!verifySignature(wallet, message, signature)) return json({ error: 'signature verification failed' }, 401);
 
   const db = admin();
-  // wallet must not already belong to another account
   const { data: existing } = await db.from('profiles').select('id').eq('wallet', wallet).maybeSingle();
   if (existing && existing.id !== user.id) {
     return json({ error: 'That wallet is already linked to another account.' }, 409);

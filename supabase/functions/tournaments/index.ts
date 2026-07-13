@@ -1,6 +1,3 @@
-// Tournaments API — real REST over Postgres. Public reads; writes are validated
-// server-side and performed with the service role. No funds are ever held: the
-// host pays winners directly and submits a tx we VERIFY on-chain (read-only).
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 import { isValidSolanaAddress, verifyUsdcPayment } from '../_shared/solana.ts';
@@ -9,7 +6,6 @@ import { notifyAll } from '../_shared/notify.ts';
 
 const PAYOUT_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-/* ------------------------------ row mappers ------------------------------ */
 // deno-lint-ignore no-explicit-any
 function toTournament(r: any) {
   return {
@@ -34,7 +30,6 @@ function toTournament(r: any) {
   };
 }
 
-/* ------------------------------ validation ------------------------------- */
 // deno-lint-ignore no-explicit-any
 function validateTournament(b: any, requireMatch: boolean): string | null {
   if (!b.title || String(b.title).length > 60) return 'Title is required (≤60 chars)';
@@ -52,7 +47,6 @@ function validateTournament(b: any, requireMatch: boolean): string | null {
   return null;
 }
 
-/* -------------------------------- router --------------------------------- */
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
@@ -60,13 +54,11 @@ Deno.serve(async (req) => {
   const db = admin();
   const url = new URL(req.url);
   const seg = url.pathname.split('/').filter(Boolean);
-  // drop everything up to and including 'tournaments'
   const i = seg.indexOf('tournaments');
   const path = i >= 0 ? seg.slice(i + 1) : seg;
   const method = req.method;
 
   try {
-    // GET /tournaments
     if (method === 'GET' && path.length === 0) {
       const filter = url.searchParams.get('filter');
       let q = db.from('tournaments').select('*').order('created_at', { ascending: false });
@@ -78,7 +70,6 @@ Deno.serve(async (req) => {
       return json(data.map(toTournament));
     }
 
-    // POST /tournaments  (create) — must be before the :id guard below
     if (method === 'POST' && path.length === 0) {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -112,7 +103,6 @@ Deno.serve(async (req) => {
       return json(toTournament(data), 201);
     }
 
-    // GET /tournaments/mine  (hosting + joined)
     if (method === 'GET' && path[0] === 'mine') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -130,13 +120,11 @@ Deno.serve(async (req) => {
     const id = path[0];
     if (!id) return json({ error: 'not found' }, 404);
 
-    // GET /tournaments/:id
     if (method === 'GET' && path.length === 1) {
       const { data } = await db.from('tournaments').select('*').eq('id', id).maybeSingle();
       return data ? json(toTournament(data)) : json({ error: 'not found' }, 404);
     }
 
-    // PATCH /tournaments/:id  (host edits before kickoff)
     if (method === 'PATCH' && path.length === 1) {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -168,7 +156,6 @@ Deno.serve(async (req) => {
       return json(toTournament(data));
     }
 
-    // DELETE /tournaments/:id  (host deletes before kickoff)
     if (method === 'DELETE' && path.length === 1) {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -181,7 +168,6 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // GET /tournaments/:id/standings
     if (method === 'GET' && path[1] === 'standings') {
       const user = await getUser(req);
       const { data: t } = await db.from('tournaments').select('winners_count').eq('id', id).maybeSingle();
@@ -206,7 +192,6 @@ Deno.serve(async (req) => {
       return json(standings);
     }
 
-    // GET /tournaments/:id/payouts
     if (method === 'GET' && path[1] === 'payouts' && path.length === 2) {
       const user = await getUser(req);
       const { data } = await db.from('tournament_payouts').select('*').eq('tournament_id', id).order('rank');
@@ -227,7 +212,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // GET /tournaments/:id/me  (my participation: points, rank)
     if (method === 'GET' && path[1] === 'me') {
       const user = await getUser(req);
       if (!user) return json({ joined: false });
@@ -240,13 +224,12 @@ Deno.serve(async (req) => {
       return json(p ? { joined: true, points: p.points, rank: p.rank ?? undefined } : { joined: false });
     }
 
-    // POST /tournaments/:id/predict  (tournament-mode wager from the stack)
     if (method === 'POST' && path[1] === 'predict') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
       const { cardId, pick, stake } = await req.json();
-      if (!cardId || (pick !== 'yes' && pick !== 'no') || stake == null || stake < 0) {
-        return json({ error: 'cardId, pick and stake required' }, 400);
+      if (!cardId || (pick !== 'yes' && pick !== 'no') || stake == null || stake < 100) {
+        return json({ error: 'cardId, pick and a stake of at least 100 are required' }, 400);
       }
       const { data: part } = await db
         .from('tournament_participants')
@@ -270,7 +253,6 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // POST /tournaments/:id/join  (free)
     if (method === 'POST' && path[1] === 'join') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -292,7 +274,6 @@ Deno.serve(async (req) => {
       return json({ ok: true, points: t.starting_points });
     }
 
-    // POST /tournaments/:id/payouts/me/address  (winner submits wallet)
     if (method === 'POST' && path[1] === 'payouts' && path[2] === 'me' && path[3] === 'address') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -313,7 +294,6 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // POST /tournaments/:id/payouts/:rank/mark-paid  (host → verify on-chain)
     if (method === 'POST' && path[1] === 'payouts' && path[3] === 'mark-paid') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -339,7 +319,6 @@ Deno.serve(async (req) => {
         .from('tournament_payouts')
         .update({ status: 'paid', verified: true, tx_sig: txSig, paid_at: new Date().toISOString() })
         .eq('id', payout.id);
-      // if every payout is paid, complete the tournament
       const { data: remaining } = await db
         .from('tournament_payouts')
         .select('id')
@@ -351,9 +330,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, verified: true });
     }
 
-    // POST /tournaments/:id/settle  (finalize standings → payouts + 48h window)
     if (method === 'POST' && path[1] === 'settle') {
-      // internal: guarded by the cron secret (same as engine-tick)
       const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
       if (cronSecret && req.headers.get('x-cron-secret') !== cronSecret) {
         return json({ error: 'forbidden' }, 403);
@@ -369,22 +346,18 @@ Deno.serve(async (req) => {
         .order('points', { ascending: false })
         .order('joined_at', { ascending: true });
       const ranked = parts ?? [];
-      // under-subscribed → shrink winners to actual participant count
       const winners = Math.min(t.winners_count, ranked.length);
       const split: number[] = t.split;
       const now = Date.now();
-      // assign ranks
       for (let r = 0; r < ranked.length; r++) {
         await db.from('tournament_participants').update({ rank: r + 1 }).eq('tournament_id', id).eq('user_id', ranked[r].user_id);
       }
-      // create payouts for the top-N
       for (let r = 0; r < winners; r++) {
         const amount = Math.round(((Number(t.prize_total) * split[r]) / 100) * 100) / 100;
         await db.from('tournament_payouts').upsert(
           { tournament_id: id, rank: r + 1, user_id: ranked[r].user_id, amount, asset: 'USDC', status: 'awaiting_address' },
           { onConflict: 'tournament_id,rank' },
         );
-        // notify "you won — submit your payout address" across every channel.
         if (await prefAllows(db, ranked[r].user_id, (p) => p.tournaments?.results !== false)) {
           const title = `🏆 Results are in — you finished #${r + 1}`;
           const body = `Claim $${amount} USDC in ${t.title}`;

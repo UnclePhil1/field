@@ -1,11 +1,8 @@
-// Read-only Solana verification: confirm a host's payment tx actually sent the
-// right amount of USDC to the winner's address. No keys, no signing — just RPC.
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.95.4';
 
 const CLUSTER = Deno.env.get('SOLANA_CLUSTER') ?? 'devnet';
 const RPC = Deno.env.get('SOLANA_RPC') ??
   (CLUSTER === 'mainnet-beta' ? 'https://api.mainnet-beta.solana.com' : 'https://api.devnet.solana.com');
-// USDC mint per cluster (override via env).
 const USDC_MINT = Deno.env.get('USDC_MINT') ??
   (CLUSTER === 'mainnet-beta'
     ? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
@@ -13,7 +10,6 @@ const USDC_MINT = Deno.env.get('USDC_MINT') ??
 
 export function isValidSolanaAddress(addr: string): boolean {
   try {
-    // base58 + on-curve check via PublicKey
     new PublicKey(addr);
     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
   } catch {
@@ -26,12 +22,7 @@ export interface VerifyResult {
   reason?: string;
 }
 
-/**
- * Verify a confirmed tx delivered >= `amount` USDC to `winnerWallet`.
- * Uses pre/post token balances so it works regardless of ATA creation.
- */
 export async function verifyUsdcPayment(txSig: string, winnerWallet: string, amount: number): Promise<VerifyResult> {
-  // basic shape check so malformed input fails cleanly (not a 500)
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(txSig.trim())) {
     return { ok: false, reason: 'Not a valid transaction signature' };
   }

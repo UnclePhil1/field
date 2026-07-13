@@ -1,9 +1,3 @@
-// Lightweight Solana wallet connector.
-//
-// We talk to an injected Phantom-compatible provider (`window.solana`)
-// directly so the bundle stays dependency-free. The wallet both identifies the
-// user and signs a login message that the `wallet-auth` Edge Function verifies.
-
 export interface SolanaProvider {
   isPhantom?: boolean;
   publicKey?: { toString(): string } | null;
@@ -23,8 +17,6 @@ declare global {
   }
 }
 
-// Known Solana wallets we surface in the picker. Each resolves its injected
-// provider if installed. `brand` is a Field-token-friendly accent for the badge.
 interface WalletDef {
   id: string;
   name: string;
@@ -51,11 +43,9 @@ export interface WalletOption {
   name: string;
   brand: string;
   url: string;
-  /** the injected provider, or null if the wallet isn't installed */
   provider: SolanaProvider | null;
 }
 
-/** The catalog with live detection — installed wallets have a provider. */
 export function detectWallets(): WalletOption[] {
   return CATALOG.map((w) => {
     const p = w.resolve();
@@ -64,7 +54,6 @@ export function detectWallets(): WalletOption[] {
   });
 }
 
-/** First installed provider that can sign (fallback / quick path). */
 export function getProvider(): SolanaProvider | null {
   const installed = detectWallets().map((w) => w.provider).filter((p): p is SolanaProvider => !!p);
   return installed.find((p) => typeof p.signMessage === 'function') ?? installed[0] ?? null;
@@ -74,19 +63,16 @@ export function isWalletAvailable(): boolean {
   return detectWallets().some((w) => w.provider);
 }
 
-/** True when running inside a wallet's in-app browser (no web push / SW support). */
 export function isInWalletBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /Phantom|Solflare|Backpack|MetaMask|CoinbaseWallet|Trust|imToken|TokenPocket/i.test(navigator.userAgent || '');
 }
 
-/** Shorten an address for display: `7xKa…9fQ2`. */
 export function shortAddress(address: string, lead = 4, tail = 4): string {
   if (address.length <= lead + tail) return address;
   return `${address.slice(0, lead)}…${address.slice(-tail)}`;
 }
 
-// base58 encoder (no dependency) — used to encode the signature for the server.
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function base58(bytes: Uint8Array): string {
   let zeros = 0;
@@ -115,12 +101,10 @@ export interface WalletSignIn {
   signature: string; // base58
 }
 
-/** Minimal shape of a wallet provider that can sign a message (AppKit / injected). */
 export interface SignMessageProvider {
   signMessage: (message: Uint8Array) => Promise<Uint8Array | { signature: Uint8Array }>;
 }
 
-/** Build the signed login payload for `wallet-auth` from a connected provider. */
 export async function buildSignInPayload(wallet: string, provider: SignMessageProvider): Promise<WalletSignIn> {
   const nonce = Math.random().toString(36).slice(2);
   const message = `Sign in to Field\nwallet: ${wallet}\nnonce: ${nonce}`;
@@ -129,11 +113,6 @@ export async function buildSignInPayload(wallet: string, provider: SignMessagePr
   return { wallet, message, signature: base58(sig) };
 }
 
-/**
- * Connect a (chosen) wallet and produce a signed login message for the backend.
- * Pass the provider from the picker; falls back to the first installed wallet.
- * Throws if no wallet is present or the user rejects.
- */
 export async function connectAndSign(chosen?: SolanaProvider): Promise<WalletSignIn> {
   const provider = chosen ?? getProvider();
   if (!provider) throw new Error('No Solana wallet found. Install a Solana wallet (Phantom, Solflare, Backpack…) to continue.');
@@ -151,6 +130,5 @@ export async function disconnectWallet(): Promise<void> {
   try {
     await getProvider()?.disconnect();
   } catch {
-    // best-effort
   }
 }

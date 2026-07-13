@@ -1,5 +1,3 @@
-// Formatting helpers. All "live numbers" render in mono at the call site.
-
 export function formatCoins(n: number): string {
   return n.toLocaleString('en-US');
 }
@@ -12,7 +10,6 @@ export function formatClock(minute: number): string {
   return `${minute}'`;
 }
 
-/** seconds -> M:SS */
 export function formatCountdown(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const m = Math.floor(s / 60);
@@ -25,7 +22,6 @@ export function formatPoints(n: number): string {
   return `${sign}${n.toLocaleString('en-US')}`;
 }
 
-/** short merkle/tx hash like "a91f…7c2e" */
 export function shortHash(hash: string): string {
   if (hash.length <= 9) return hash;
   return `${hash.slice(0, 4)}…${hash.slice(-4)}`;
@@ -43,7 +39,6 @@ export function phaseLabel(phase: string): string {
   }
 }
 
-/** "in 2h 15m" style relative kickoff for upcoming matches */
 export function untilKickoff(iso: string, now = Date.now()): string {
   const diff = new Date(iso).getTime() - now;
   if (diff <= 0) return 'kicking off';

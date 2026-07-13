@@ -1,5 +1,3 @@
-// place-call — server-authoritative wager. The client never settles its own
-// calls; it only records a pick + stake here while the card is still open.
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -18,13 +16,12 @@ Deno.serve(async (req) => {
     return json({ error: 'invalid json' }, 400);
   }
   const { cardId, pick, stake } = body;
-  if (!cardId || (pick !== 'yes' && pick !== 'no') || !stake || stake <= 0) {
-    return json({ error: 'cardId, pick (yes|no) and positive stake are required' }, 400);
+  if (!cardId || (pick !== 'yes' && pick !== 'no') || !stake || stake < 100) {
+    return json({ error: 'cardId, pick (yes|no) and a stake of at least 100 coins are required' }, 400);
   }
 
   const db = admin();
 
-  // Card must still be open.
   const { data: card } = await db
     .from('prediction_cards')
     .select('id, status, locks_at')
@@ -35,12 +32,10 @@ Deno.serve(async (req) => {
     return json({ error: 'card is locked' }, 409);
   }
 
-  // User must have enough coins to cover the stake.
   const { data: profile } = await db.from('profiles').select('coins').eq('id', user.id).maybeSingle();
   if (!profile) return json({ error: 'profile not found' }, 404);
   if (profile.coins < stake) return json({ error: 'insufficient coins' }, 402);
 
-  // One call per card per user.
   const { error: insErr } = await db.from('predictions').insert({
     card_id: cardId,
     user_id: user.id,
@@ -52,7 +47,6 @@ Deno.serve(async (req) => {
     return json({ error: insErr.message }, 500);
   }
 
-  // Refresh the crowd split off live calls so other clients see it move.
   const { count: total } = await db
     .from('predictions')
     .select('id', { count: 'exact', head: true })

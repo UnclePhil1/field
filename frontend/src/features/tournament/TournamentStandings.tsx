@@ -2,7 +2,6 @@ import type { Standing } from '../../types/tournament';
 import { FlameIcon } from '../../components/Icons';
 import { formatCoins } from '../../lib/format';
 
-/** Tournament board: ordered by points; paid (top-N) rows glow grass. */
 export function TournamentStandings({ standings }: { standings: Standing[] }) {
   if (standings.length === 0) {
     return <p className="text-sm text-muted">No players yet — be the first to join.</p>;

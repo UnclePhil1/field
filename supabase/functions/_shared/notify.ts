@@ -1,5 +1,3 @@
-// In-app inbox rows (shown live via Realtime). notifyAll also forwards the same
-// message to push and Telegram.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { fcmEnabled, notifyUser } from './fcm.ts';
 import { sendTelegram } from './telegram.ts';
@@ -21,7 +19,6 @@ export async function notifyInbox(db: SupabaseClient, userId: string, n: InboxPa
   });
 }
 
-/** Send one notification to every channel the user has: inbox, push, Telegram. */
 export async function notifyAll(db: SupabaseClient, userId: string, n: InboxPayload): Promise<void> {
   await notifyInbox(db, userId, n).catch(() => {});
   if (fcmEnabled) {

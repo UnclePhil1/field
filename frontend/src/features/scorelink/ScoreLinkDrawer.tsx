@@ -43,7 +43,6 @@ export function ScoreLinkDrawer({ match, onClose }: { match: Match; onClose: () 
     } finally { setBusy(false); }
   }
 
-  // ── header ──
   const header = (
     <div className="mb-3 border-b border-edge pb-3">
       <div className="flex items-center gap-2">
@@ -53,6 +52,21 @@ export function ScoreLinkDrawer({ match, onClose }: { match: Match; onClose: () 
       <p className="mt-1 text-sm font-semibold text-grass">Pick the nastiest scoreline.</p>
       <p className="text-xs text-muted">Lower entry means a bigger payout if the match lands exactly there.</p>
       <p className="mt-2 flex items-center gap-1 text-xs text-chalk-dim"><CoinIcon size={13} className="text-grass" /> {coins.toLocaleString('en-US')} coins to stake</p>
+
+      <div className="mt-3 rounded-card border border-edge-2 bg-turf-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-chalk">Real stake</span>
+            <span className="rounded-full border border-flare/40 bg-flare/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-flare-2">Soon</span>
+          </div>
+          <span role="switch" aria-checked="false" aria-disabled="true" className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-edge-2 bg-turf opacity-60">
+            <span className="inline-block h-4 w-4 translate-x-1 rounded-full bg-muted" />
+          </span>
+        </div>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+          Play with real funds instead of coins. Your stake locks in a vault for the match. At full time, everyone who called the exact scoreline splits the funds staked on the wrong scorelines. Free play stays free, this is opt-in.
+        </p>
+      </div>
     </div>
   );
 
@@ -74,7 +88,6 @@ export function ScoreLinkDrawer({ match, onClose }: { match: Match; onClose: () 
         </div>
       );
     }
-    // stake view
     return (
       <div>
         {header}
@@ -95,7 +108,6 @@ export function ScoreLinkDrawer({ match, onClose }: { match: Match; onClose: () 
     );
   }
 
-  // ── already picked: show the locked Score Link, no re-pick ──
   const myPick = mine[0];
   if (myPick) {
     const img = `/api/og?type=scoreline&home=${match.home.code}&away=${match.away.code}&hs=${myPick.homeGoals}&as=${myPick.awayGoals}&mult=${myPick.multiplier}&tag=${encodeURIComponent(myPick.tag)}`;
@@ -120,7 +132,6 @@ export function ScoreLinkDrawer({ match, onClose }: { match: Match; onClose: () 
     );
   }
 
-  // ── list view ──
   return (
     <div>
       {header}

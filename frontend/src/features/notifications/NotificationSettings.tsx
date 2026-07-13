@@ -56,7 +56,6 @@ export function NotificationSettings() {
     <section className="rounded-card border border-edge bg-turf p-4">
       <StatLabel>Notifications</StatLabel>
 
-      {/* iOS must install as a PWA first */}
       {needsInstall && (
         <div className="mt-2">
           <p className="text-sm font-semibold text-chalk-dim">Add Field to your Home Screen to get alerts.</p>
@@ -67,7 +66,6 @@ export function NotificationSettings() {
         </div>
       )}
 
-      {/* soft-ask */}
       {!needsInstall && permission !== 'granted' && (
         <div className="mt-2">
           <p className="text-sm text-chalk-dim">
@@ -83,7 +81,6 @@ export function NotificationSettings() {
         </div>
       )}
 
-      {/* granular prefs once granted */}
       {permission === 'granted' && (
         <div className="mt-3 flex flex-col gap-4">
           <p className="text-xs text-muted">{token ? 'This device is registered for alerts.' : 'Registering this device…'}</p>

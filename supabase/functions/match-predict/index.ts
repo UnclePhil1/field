@@ -1,7 +1,3 @@
-// Call the Score + Fan War.
-//   POST /match-predict  { matchId, homeGoals, awayGoals, side }  -> save (before kickoff)
-//   GET  /match-predict?matchId=..                                -> my pick + Fan War split
-// Settlement happens at full time inside the engine.
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 

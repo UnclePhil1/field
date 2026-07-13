@@ -1,5 +1,3 @@
-// username-auth — register or log in with a username + password. Maps the
-// username to a synthetic email internally so Supabase auth handles the password.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { admin } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
@@ -36,7 +34,6 @@ Deno.serve(async (req) => {
   });
 
   if (action === 'register') {
-    // username must be free
     const { data: taken } = await db.from('profiles').select('id').ilike('username', username).maybeSingle();
     if (taken) return json({ error: 'That username is taken.' }, 409);
 

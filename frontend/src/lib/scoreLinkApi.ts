@@ -1,4 +1,3 @@
-// Score Link client — the exact-scoreline market.
 import { supabase, functionsBase } from './supabase';
 
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -36,7 +35,6 @@ export const scoreLinkApi = {
     req<{ ok: boolean; multiplier: number; entryCents: number; payoutIfWin: number }>('POST', '', { matchId, homeGoals, awayGoals, stake }),
 };
 
-/** A shareable Score Link that unfurls as a card + opens a download page. */
 export function buildScoreUrl(p: { home: string; away: string; hs: number; as: number; mult: number; tag: string }): string {
   const q = new URLSearchParams({
     home: p.home, away: p.away, hs: String(p.hs), as: String(p.as), mult: String(p.mult), tag: p.tag,

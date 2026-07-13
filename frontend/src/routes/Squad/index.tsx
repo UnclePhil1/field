@@ -6,7 +6,6 @@ import { StatLabel } from '../../components/StatLabel';
 import { Button } from '../../components/Button';
 import { Flag } from '../../components/Flag';
 
-// Public invite page. A friend lands here from a shared squad link.
 export function SquadJoin() {
   const { code = '' } = useParams();
   const navigate = useNavigate();

@@ -9,7 +9,6 @@ interface Toast {
   url?: string;
 }
 
-/** Field-themed in-app toast for FOREGROUND push messages (not OS notifications). */
 export function PushToast() {
   const navigate = useNavigate();
   const [toasts, setToasts] = useState<Toast[]>([]);

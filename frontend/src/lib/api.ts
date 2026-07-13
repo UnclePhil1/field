@@ -1,7 +1,3 @@
-// The single data boundary. Everything now resolves from Supabase (Postgres +
-// Realtime). Components and hooks import from here, never from the DB directly,
-// so the data source stays contained to this file. No mock data.
-
 import { supabase } from './supabase';
 import type {
   Match,
@@ -11,8 +7,6 @@ import type {
   SettledCall,
   Receipt,
 } from '../types';
-
-/* ----------------------------- row → type maps ---------------------------- */
 
 type MatchRow = {
   id: string;
@@ -109,8 +103,6 @@ function toCard(r: CardRow): PredictionCard {
   };
 }
 
-/* ------------------------------- fetchers -------------------------------- */
-
 export async function fetchMatches(): Promise<Match[]> {
   const { data, error } = await supabase
     .from('matches')
@@ -126,7 +118,6 @@ export async function fetchMatch(id: string): Promise<Match | undefined> {
   return data ? toMatch(data as MatchRow) : undefined;
 }
 
-/** Finished matches, most recent first — the replay library. */
 export async function fetchFinishedMatches(): Promise<Match[]> {
   const { data, error } = await supabase
     .from('matches')
@@ -138,11 +129,6 @@ export async function fetchFinishedMatches(): Promise<Match[]> {
   return (data as MatchRow[]).map(toMatch);
 }
 
-/**
- * Finished matches for the replay library, each flagged `replayable` — true only
- * when the recorded goal events reconstruct the real final score (the engine only
- * captures events it witnessed live, so partially-observed matches are excluded).
- */
 export async function fetchReplayLibrary(): Promise<{ match: Match; replayable: boolean }[]> {
   const matches = await fetchFinishedMatches();
   if (!matches.length) return [];
@@ -164,7 +150,6 @@ export async function fetchReplayLibrary(): Promise<{ match: Match; replayable: 
   });
 }
 
-/** All recorded events for a match (for replay), oldest first. */
 export async function fetchMatchEvents(matchId: string): Promise<MatchEvent[]> {
   const { data } = await supabase
     .from('match_events')
@@ -197,8 +182,6 @@ export async function fetchRecentCalls(): Promise<SettledCall[]> {
   );
 }
 
-/* --------------------------- live subscription --------------------------- */
-
 export interface FeedSnapshot {
   match: Match;
   events: MatchEvent[];
@@ -206,11 +189,6 @@ export interface FeedSnapshot {
 }
 type Listener = (snap: FeedSnapshot) => void;
 
-/**
- * Subscribe to a live match. Assembles {match, events, card} from Postgres and
- * pushes a fresh snapshot whenever any of those tables change via Realtime.
- * Same contract the mock emitter used — components are untouched.
- */
 export function subscribeMatch(matchId: string, listener: Listener): () => void {
   let cancelled = false;
 

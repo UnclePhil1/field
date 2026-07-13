@@ -7,7 +7,6 @@ interface ChipProps {
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
-  /** render numeric content in mono */
   mono?: boolean;
 }
 

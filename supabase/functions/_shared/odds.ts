@@ -1,9 +1,5 @@
-// Derive an odds-weighted multiplier from StablePrice odds. Defensive: returns
-// null whenever a usable market isn't present, so the engine falls back to its
-// heuristic. Activates automatically once real odds flow for a fixture.
 import type { OddsOffer } from './txline.ts';
 
-/** Implied probability (0..1) that `side` wins, from a match-result market. */
 export function impliedWinProbability(offers: OddsOffer[], side: 'home' | 'away'): number | null {
   for (const o of offers) {
     const names = (o.PriceNames ?? []).map((n) => n.toLowerCase());
@@ -21,7 +17,6 @@ export function impliedWinProbability(offers: OddsOffer[], side: 'home' | 'away'
   return null;
 }
 
-/** Fair-ish payout multiplier from a probability, bounded to a sane game range. */
 export function multiplierFromProb(p: number): number {
   const bounded = Math.max(0.18, Math.min(0.85, p));
   return Math.round((1 / bounded) * 10) / 10; // one decimal, ~1.2–5.5

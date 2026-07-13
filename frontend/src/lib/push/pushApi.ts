@@ -1,4 +1,3 @@
-// Client for the `push` Edge Function (token + preference management).
 import { supabase, functionsBase } from '../supabase';
 
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;

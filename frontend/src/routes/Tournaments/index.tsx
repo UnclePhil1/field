@@ -49,7 +49,6 @@ export function Tournaments() {
         </div>
       </header>
 
-      {/* tabs */}
       <div className="mb-4 flex gap-1 rounded-full border border-edge bg-turf p-1">
         {TABS.map((t) => (
           <button
@@ -87,7 +86,6 @@ export function Tournaments() {
         </Grid>
       )}
 
-      {/* mobile create */}
       <Link to="/tournaments/create" className="mt-5 block sm:hidden">
         <Button variant="grass" fullWidth leftIcon={<PlusIcon size={18} />}>Create tournament</Button>
       </Link>

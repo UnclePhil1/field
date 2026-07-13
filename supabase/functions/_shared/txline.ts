@@ -1,12 +1,7 @@
-// TxLINE devnet client (server-side only — secrets never reach the browser).
-// Curated against docs/txline-field-guide.md. Kept deliberately small: guest
-// auth → activate (or static token) → REST snapshots/updates → stat-validation.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const DATA_BASE = Deno.env.get('TXLINE_BASE') ?? 'https://txline-dev.txodds.com';
-// Auth host can differ from the data host on devnet ("oracle-dev"); override if needed.
 const AUTH_BASE = Deno.env.get('TXLINE_AUTH_BASE') ?? DATA_BASE;
-// If the operator activated a token manually, use it directly (simplest path).
 const STATIC_API_TOKEN = Deno.env.get('TXLINE_API_TOKEN') ?? '';
 
 interface Session {
@@ -14,7 +9,6 @@ interface Session {
   apiToken: string;
 }
 
-/** A guest JWT is short-lived; we cache it (and the api token) in txline_session. */
 async function loadCached(db: SupabaseClient): Promise<{ jwt?: string; apiToken?: string; valid: boolean }> {
   const { data } = await db.from('txline_session').select('jwt, api_token, expires_at').eq('id', true).maybeSingle();
   if (!data) return { valid: false };
@@ -36,7 +30,6 @@ async function guestStart(): Promise<string> {
   const res = await fetch(`${AUTH_BASE}/auth/guest/start`, { method: 'POST' });
   if (!res.ok) throw new Error(`guest/start ${res.status}`);
   const body = await res.json();
-  // docs return { token } (JWT)
   return body.token ?? body.jwt ?? body.access_token;
 }
 
@@ -52,7 +45,6 @@ async function activate(jwt: string): Promise<string> {
   return body.apiToken ?? body.api_token ?? body.token;
 }
 
-/** Get a usable {jwt, apiToken}, refreshing/caching as needed. */
 export async function getSession(db: SupabaseClient): Promise<Session> {
   const cached = await loadCached(db);
   if (cached.valid && cached.jwt && (cached.apiToken || STATIC_API_TOKEN)) {
@@ -78,8 +70,6 @@ async function get<T>(s: Session, path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-// ───────────────────────── data endpoints ─────────────────────────
-
 export interface TxFixture {
   FixtureId: number;
   Participant1: string;
@@ -89,23 +79,15 @@ export interface TxFixture {
   [k: string]: unknown;
 }
 
-/** All fixtures (optionally for one competition). */
 export function fetchFixtures(s: Session, competitionId?: number): Promise<TxFixture[]> {
   const q = competitionId ? `?competitionId=${competitionId}` : '';
   return get<TxFixture[]>(s, `/api/fixtures/snapshot${q}`);
 }
 
-/** Current scores snapshot for a fixture. */
 export function fetchScores(s: Session, fixtureId: number): Promise<unknown[]> {
   return get<unknown[]>(s, `/api/scores/snapshot/${fixtureId}`);
 }
 
-/** Live scores updates for a fixture. */
-export function fetchScoreUpdates(s: Session, fixtureId: number): Promise<unknown[]> {
-  return get<unknown[]>(s, `/api/scores/updates/${fixtureId}`);
-}
-
-/** Full historical score sequence for a past fixture (2 weeks–6h old). */
 export function fetchScoresHistorical(s: Session, fixtureId: number): Promise<unknown[]> {
   return get<unknown[]>(s, `/api/scores/historical/${fixtureId}`);
 }
@@ -120,12 +102,10 @@ export interface OddsOffer {
   Ts?: number;
 }
 
-/** Latest StablePrice odds offers for a fixture (may be empty pre-match). */
 export function fetchOdds(s: Session, fixtureId: number): Promise<OddsOffer[]> {
   return get<OddsOffer[]>(s, `/api/odds/snapshot/${fixtureId}`);
 }
 
-/** Merkle proof / validation data for one stat (read-only — for receipts). */
 export function fetchStatValidation(
   s: Session,
   fixtureId: number,

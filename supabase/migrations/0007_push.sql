@@ -1,7 +1,3 @@
--- Push notifications (FCM web push): per-user device tokens + preferences.
--- Tokens/prefs are written by the push Edge Function with the service role;
--- users may read/manage only their own rows.
-
 create table if not exists public.push_tokens (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references public.profiles(id) on delete cascade,
@@ -23,7 +19,6 @@ create table if not exists public.notification_preferences (
   updated_at   timestamptz not null default now()
 );
 
--- ── RLS: users see/manage only their own rows; sends use the service role ──
 alter table public.push_tokens             enable row level security;
 alter table public.notification_preferences enable row level security;
 

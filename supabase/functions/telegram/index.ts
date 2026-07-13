@@ -1,7 +1,3 @@
-// Manages a user's Telegram connection.
-//   POST /telegram/link    -> one-time code + link to open the bot
-//   GET  /telegram/status  -> { connected, tg_username }
-//   POST /telegram/unlink  -> disconnect
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -24,7 +20,6 @@ Deno.serve(async (req) => {
   const db = admin();
   const path = new URL(req.url).pathname.replace(/^.*\/telegram/, '') || '/';
 
-  // ── status ──
   if (req.method === 'GET') {
     const { data } = await db.from('telegram_links').select('tg_username, linked_at').eq('user_id', user.id).maybeSingle();
     return json({ connected: !!data, tg_username: data?.tg_username ?? null });
@@ -37,7 +32,6 @@ Deno.serve(async (req) => {
 
   if (req.method === 'POST' && path === '/link') {
     if (!BOT_USERNAME) return json({ error: 'Telegram bot not configured' }, 503);
-    // Clear old codes so taps don't pile up rows.
     await db.from('telegram_link_codes').delete().eq('user_id', user.id);
     const code = newCode();
     const expires_at = new Date(Date.now() + CODE_TTL_MS).toISOString();

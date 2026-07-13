@@ -14,7 +14,6 @@ export function RecentCalls({ calls, onViewProof }: RecentCallsProps) {
   return (
     <section className="rounded-card border border-edge bg-turf p-4">
       <StatLabel>Your recent calls</StatLabel>
-      {/* fixed-height scroll area so the panel never grows the page */}
       <div className="mt-3 max-h-[19rem] overflow-y-auto pr-1 [scrollbar-width:thin]">
         <ul className="divide-y divide-edge/70">
           {calls.map((c) => {

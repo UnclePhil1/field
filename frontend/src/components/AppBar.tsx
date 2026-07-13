@@ -15,7 +15,6 @@ export function Wordmark({ className = '' }: { className?: string }) {
       className={['inline-flex items-center gap-1.5 font-extrabold tracking-tightest text-chalk', className].join(' ')}
       aria-label="Field — home"
     >
-      {/* <Logo size={32} /> */}
       <span className="inline-flex items-baseline">
         <span>Field</span>
         <span className="text-grass">.</span>
@@ -53,7 +52,6 @@ export function WalletChip() {
     try {
       await disconnect();
     } catch {
-      /* best-effort */
     }
     navigate('/', { replace: true });
   }
@@ -66,7 +64,6 @@ export function WalletChip() {
       className="inline-flex h-8 items-center gap-1.5 rounded-full border border-edge bg-turf-2 px-2 text-xs font-semibold text-chalk-dim transition-colors hover:border-grass/60 hover:text-chalk sm:px-2.5"
     >
       <WalletIcon size={15} />
-      {/* label hidden on mobile — icon only to save space */}
       <span className="tabular hidden max-w-[110px] truncate sm:inline">{label}</span>
     </button>
   );

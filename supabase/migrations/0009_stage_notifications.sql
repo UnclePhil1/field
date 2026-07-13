@@ -1,5 +1,3 @@
--- Match stage label (Group / R16 / QF …) + in-app notification inbox.
-
 alter table public.matches add column if not exists stage text;
 
 create table if not exists public.notifications (
@@ -16,7 +14,6 @@ create index if not exists notifications_user_idx on public.notifications(user_i
 
 alter table public.notifications enable row level security;
 
--- users see + update (mark read) only their own; inserts come from the service role
 drop policy if exists notifications_read_own on public.notifications;
 create policy notifications_read_own on public.notifications for select using (auth.uid() = user_id);
 

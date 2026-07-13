@@ -22,7 +22,6 @@ function evenSplit(n: number): number[] {
 function presetFor(n: number, kind: 'even' | 'top-heavy' | 'wta'): number[] {
   if (kind === 'wta') return [100, ...Array(n - 1).fill(0)];
   if (kind === 'even') return evenSplit(n);
-  // top-heavy presets
   const map: Record<number, number[]> = { 1: [100], 2: [70, 30], 3: [50, 30, 20], 4: [40, 30, 20, 10], 5: [40, 25, 15, 12, 8] };
   return map[n] ?? evenSplit(n);
 }
@@ -54,7 +53,6 @@ export function TournamentCreate() {
     fetchMatches().then((ms) => setMatches(ms.filter((m) => m.status === 'upcoming'))).catch(() => {});
   }, []);
 
-  // Edit mode: load the tournament once and prefill every field.
   useEffect(() => {
     if (!editId) return;
     tournamentApi.getById(editId).then((t) => {
@@ -140,7 +138,6 @@ export function TournamentCreate() {
       <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">{isEdit ? 'Edit tournament' : 'Create tournament'}</h1>
 
       <div className="mt-5 flex flex-col gap-5">
-        {/* basics */}
         <Section title="Basics">
           <Field label={`Title (${title.length}/60)`}>
             <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} placeholder="England vs France — Corner Clash" className={inputCls} />
@@ -161,7 +158,6 @@ export function TournamentCreate() {
           {bannerUrl && <img src={bannerUrl} alt="" className="h-28 w-full rounded-card border border-edge object-cover" />}
         </Section>
 
-        {/* match */}
         <Section title="Match">
           {isEdit && <p className="text-xs text-muted">The match can’t be changed. To use a different match, delete this tournament and create a new one.</p>}
           {matches.length === 0 ? (
@@ -181,7 +177,6 @@ export function TournamentCreate() {
           )}
         </Section>
 
-        {/* prize + wallet */}
         <Section title="Prize">
           <div className="flex gap-3">
             <Field label="Amount (USDC)" className="flex-1">
@@ -194,7 +189,6 @@ export function TournamentCreate() {
           </Field>
         </Section>
 
-        {/* capacity */}
         <Section title="Capacity">
           <div className="flex gap-2">
             <Toggle active={capacityType === 'open'} onClick={() => setCapacityType('open')}>Open</Toggle>
@@ -207,7 +201,6 @@ export function TournamentCreate() {
           )}
         </Section>
 
-        {/* winners + split */}
         <Section title="Winners & split">
           <Field label="Number of winners">
             <div className="flex gap-2">
@@ -233,7 +226,6 @@ export function TournamentCreate() {
           </div>
         </Section>
 
-        {/* review + create */}
         <div className="rounded-card-lg border border-edge-2 bg-turf p-4">
           <StatLabel>Review</StatLabel>
           <p className="mt-2 text-sm text-chalk-dim">

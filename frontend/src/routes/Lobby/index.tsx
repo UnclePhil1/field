@@ -16,7 +16,6 @@ export function Lobby() {
     });
   }, []);
 
-  // Only live + upcoming ever show; finished/voided games drop off the lobby.
   const live = matches.filter((m) => m.status === 'live');
   const upcoming = matches.filter((m) => m.status === 'upcoming');
 

@@ -7,8 +7,6 @@ import { Button } from '../../components/Button';
 import { PlayIcon } from '../../components/Icons';
 import type { Match } from '../../types';
 
-// "Live Matches" entry. If a match is live, go straight into it. Otherwise show
-// an empty state with a way to watch a replay and to turn on Telegram alerts.
 export function Live() {
   const navigate = useNavigate();
   const [matches, setMatches] = useState<Match[] | null>(null);

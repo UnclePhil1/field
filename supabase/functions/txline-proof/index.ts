@@ -1,8 +1,7 @@
-// txline-proof — expand a settled card's receipt into the underlying Merkle
-// proof on demand (read-only). Powers the "View the proof" modal.
 import { admin } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 import { getSession, fetchStatValidation } from '../_shared/txline.ts';
+import { merkleRootFrom } from '../_shared/proof.ts';
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -29,8 +28,6 @@ Deno.serve(async (req) => {
     .eq('id', card.match_id)
     .maybeSingle();
 
-  // No on-chain data available (e.g. token not set / voided) → return the
-  // receipt we already have so the modal still renders honestly.
   if (!match?.txline_fixture_id || card.txline_seq == null || card.txline_stat_key == null) {
     return json({ receipt: card.receipt, proof: null, note: 'Proof data not available for this card.' });
   }
@@ -43,12 +40,9 @@ Deno.serve(async (req) => {
       Number(card.txline_seq),
       Number(card.txline_stat_key),
     );
-    const merkleRoot =
-      (validation.eventStatRoot as string) ??
-      ((validation.summary as Record<string, unknown>)?.eventStatsSubTreeRoot as string) ??
-      '—';
+    const { short: merkleRoot, full: merkleRootFull } = merkleRootFrom(validation);
     return json({
-      receipt: { ...(card.receipt as Record<string, unknown>), merkleRoot },
+      receipt: { ...(card.receipt as Record<string, unknown>), merkleRoot, merkleRootFull },
       proof: validation,
     });
   } catch (e) {

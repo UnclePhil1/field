@@ -1,5 +1,3 @@
-// Reown AppKit — wallet connection modal (WalletConnect + injected + mobile deep
-// links). Configured once at module scope; hooks read from its global store.
 import { createAppKit } from '@reown/appkit/react';
 import { SolanaAdapter } from '@reown/appkit-adapter-solana/react';
 import { solana } from '@reown/appkit/networks';
@@ -13,13 +11,11 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/179229932'],
 };
 
-// Field runs on Solana mainnet (data + payouts).
 createAppKit({
   adapters: [new SolanaAdapter()],
   networks: [solana],
   metadata,
   projectId,
-  // On-chain wallets only — no email or social logins.
   features: {
     analytics: false,
     email: false,

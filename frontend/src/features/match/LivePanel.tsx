@@ -27,7 +27,6 @@ export function LivePanel({ match, events }: LivePanelProps) {
     <section className="relative corner-arcs rounded-card-lg border border-edge-2 bg-turf p-4 shadow-card sm:p-5">
       <span className="arc-b" aria-hidden />
 
-      {/* header row */}
       <div className="flex items-center justify-between">
         <LivePill />
         <span className="tabular text-sm text-chalk-dim">
@@ -35,7 +34,6 @@ export function LivePanel({ match, events }: LivePanelProps) {
         </span>
       </div>
 
-      {/* compact score */}
       <div className="mt-3 flex items-center justify-center gap-3 sm:gap-4" aria-live="polite">
         <TeamScore
           team={match.home}
@@ -55,7 +53,6 @@ export function LivePanel({ match, events }: LivePanelProps) {
       </div>
       <p className="mt-1 text-center text-xs text-muted">{match.stage ? `${match.competition} · ${match.stage}` : match.competition}</p>
 
-      {/* pitch */}
       <div className="mt-4">
         <Pitch events={events} />
       </div>
@@ -84,7 +81,6 @@ function TeamScore({
     <div className={['flex min-w-0 items-center gap-2 sm:gap-2.5', right ? 'flex-row' : 'flex-row-reverse'].join(' ')}>
       <Flag country={team.country} code={team.code} size={26} />
       <div className={['min-w-0', right ? 'text-right' : 'text-left'].join(' ')}>
-        {/* full name on >=sm, 3-letter code on mobile to stay responsive */}
         <span className="hidden max-w-[90px] truncate text-sm font-bold text-chalk-dim sm:inline-block sm:max-w-[140px]">
           {team.name}
         </span>
@@ -101,7 +97,6 @@ function TeamScore({
   );
 }
 
-/** A small booking-card chip: a coloured card glyph + count. */
 function CardPip({ count, tone }: { count: number; tone: 'yellow' | 'red' }) {
   return (
     <span className="inline-flex items-center gap-1" title={`${count} ${tone} card${count > 1 ? 's' : ''}`}>

@@ -20,7 +20,6 @@ export function Modal({ open, onClose, title, children, labelledBy }: ModalProps
     };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    // move focus into the panel
     panelRef.current?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);

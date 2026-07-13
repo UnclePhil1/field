@@ -34,7 +34,6 @@ export function MatchRoom() {
     return () => setActiveMatch(null);
   }, [id, setActiveMatch]);
 
-  // tournament mode: load my stack for the banner + card wagering
   const refreshTour = useCallback(async () => {
     if (!tournamentId) {
       setTour(null);
@@ -51,8 +50,6 @@ export function MatchRoom() {
     return <RoomSkeleton />;
   }
 
-  // "This match" board: only the top 3 plus the logged-in user's own
-  // position (deduped if the user is already inside the top 3).
   const thisMatchBoard = topThreePlusMe(board);
 
   return (
@@ -84,7 +81,6 @@ export function MatchRoom() {
         </Link>
       )}
       <div className="flex flex-col gap-6 xl:flex-row">
-      {/* center play column */}
       <div className="flex w-full min-w-0 flex-1 flex-col gap-4 xl:max-w-play">
         <div className="flex items-center justify-between">
           <span className="eyebrow">{match.home.name} v {match.away.name}</span>
@@ -94,7 +90,6 @@ export function MatchRoom() {
         <RecentCalls calls={recentCalls} onViewProof={setProof} />
       </div>
 
-      {/* contextual rail — This match board, with Prediction directly under it */}
       <aside className="flex w-full shrink-0 flex-col gap-4 xl:w-[320px]">
         <div className="rounded-card border border-edge bg-turf p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -129,7 +124,6 @@ export function MatchRoom() {
   );
 }
 
-/** Top 3 ranked players + the current user's own ranked row (if outside top 3). */
 function topThreePlusMe(board: Player[]): Player[] {
   const ranked = board.map((p, i) => ({ ...p, rank: i + 1 }));
   const top3 = ranked.slice(0, 3);

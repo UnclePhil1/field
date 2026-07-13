@@ -1,8 +1,3 @@
-// Generate a fresh Solana wallet keypair file (CLI-compatible JSON array of 64
-// numbers) without needing the Solana CLI. Prints the public address to fund.
-//
-//   node gen-wallet.mjs            -> writes ./my-wallet.json
-//   node gen-wallet.mjs ./foo.json -> writes ./foo.json
 import { writeFileSync, existsSync } from 'node:fs';
 import { Keypair } from '@solana/web3.js';
 

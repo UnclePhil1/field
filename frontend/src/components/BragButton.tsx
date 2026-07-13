@@ -3,15 +3,14 @@ import { ShareIcon, CheckIcon } from './Icons';
 import { buildBragUrl } from '../lib/brag';
 
 interface BragButtonProps {
-  title: string;      // headline on the card, e.g. "Called Spain's corner"
-  sub?: string;       // context line, e.g. "Portugal 2–1 Spain · 67'"
-  tag?: string;       // pill text, e.g. "CALLED IT"
-  text?: string;      // caption used when sharing
+  title: string;      
+  sub?: string;       
+  tag?: string;       
+  text?: string;      
   label?: string;
   className?: string;
 }
 
-/** Shares a brag link that unfurls as a personal FanField card. */
 export function BragButton({ title, sub, tag, text, label = 'Share', className = '' }: BragButtonProps) {
   const [done, setDone] = useState(false);
 
@@ -27,7 +26,6 @@ export function BragButton({ title, sub, tag, text, label = 'Share', className =
       setDone(true);
       setTimeout(() => setDone(false), 1600);
     } catch {
-      /* cancelled or blocked */
     }
   }
 

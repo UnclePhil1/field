@@ -5,7 +5,6 @@ import { ReplayPlayer } from '../../features/replay/ReplayPlayer';
 import type { ReplayEvent } from '../../lib/replay/useReplay';
 import type { Match } from '../../types';
 
-// Scripted showcase used for /replay/demo (and when a match has no recorded events).
 const DEMO: { home: string; away: string; timeline: ReplayEvent[] } = {
   home: 'ENG',
   away: 'FRA',
@@ -55,7 +54,6 @@ export function ReplayMatch() {
   const home = match ? match.home : { code: DEMO.home, name: 'England', country: 'gb-eng' };
   const away = match ? match.away : { code: DEMO.away, name: 'France', country: 'fr' };
 
-  // A real match is only replayable if its recorded goals reconstruct the final score.
   const goalHome = timeline.filter((e) => e.kind === 'goal' && e.side === 'home').length;
   const goalAway = timeline.filter((e) => e.kind === 'goal' && e.side === 'away').length;
   const replayable = !match || (goalHome === match.homeScore && goalAway === match.awayScore);

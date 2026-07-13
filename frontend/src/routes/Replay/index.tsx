@@ -8,7 +8,6 @@ import type { Match } from '../../types';
 
 type Entry = { match: Match; replayable: boolean };
 
-/** Replay library — every finished match, rewatchable, plus a showcase demo. */
 export function Replay() {
   const [matches, setMatches] = useState<Entry[] | null>(null);
 
@@ -24,7 +23,6 @@ export function Replay() {
       <p className="mt-1 text-sm text-muted">Every finished match replays with its real goals, cards and corners.</p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {/* showcase demo always available */}
         <ReplayCard to="/replay/demo" title="Showcase" subtitle="England v France · demo" />
 
         {matches === null

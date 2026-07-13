@@ -1,5 +1,3 @@
-// Telegram link client — talks to the `telegram` Edge Function. Sends themselves
-// happen server-side (engine/tournaments); this only manages the connection.
 import { supabase, functionsBase } from './supabase';
 
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;

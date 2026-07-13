@@ -1,5 +1,3 @@
-// Chat client. Sends go through the guarded function; history + live updates are
-// read straight from the table over Realtime (RLS controls squad visibility).
 import { supabase, functionsBase } from './supabase';
 
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;

@@ -4,17 +4,14 @@ import '../styles/pitch.css';
 
 interface PitchProps {
   events: MatchEvent[];
-  /** which way momentum leans, derived upstream or from events */
-  homeMomentum?: number; // 0..1, share of pressure for the home side
-  /** schematic formations to draw as decorative dots (NOT real positions) */
+  homeMomentum?: number;
   formations?: { home: string; away: string };
 }
 
-/** Compute decorative dot positions from a formation string, e.g. "4-3-3". */
 function formationDots(formation: string, side: Side): { x: number; y: number; n: number }[] {
   const lines = formation.split('-').map((n) => parseInt(n, 10)).filter((n) => n > 0);
-  const rows = [1, ...lines]; // goalkeeper + outfield lines
-  const half = 0.44; // each team occupies ~44% of the width
+  const rows = [1, ...lines]; 
+  const half = 0.44;
   const dots: { x: number; y: number; n: number }[] = [];
   let num = 1;
   rows.forEach((count, rowIdx) => {
@@ -28,11 +25,6 @@ function formationDots(formation: string, side: Side): { x: number; y: number; n
   return dots;
 }
 
-/**
- * Honest interpretation of verifiable events — NOT player tracking.
- * Heat drifts toward the side with recent pressure; the flare threat marker
- * snaps to the latest event; a ring pulses where a goal/corner/card happened.
- */
 interface Mark {
   id: string;
   x: number;
@@ -45,7 +37,6 @@ interface Mark {
 export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away: '4-4-2' } }: PitchProps) {
   const last = events[0];
 
-  // decorative formation dots (schematic team shape — not player tracking)
   const dots = useMemo(
     () => [
       ...formationDots(formations.home, 'home').map((d) => ({ ...d, side: 'home' as Side })),
@@ -54,13 +45,9 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
     [formations.home, formations.away],
   );
   const [pulse, setPulse] = useState<{ id: string; x: number; y: number; side: Side; kind: string } | null>(null);
-  // a longer-lived mark for corners (glow) and cards (yellow/red box)
   const [mark, setMark] = useState<Mark | null>(null);
   const seen = useRef<string | null>(null);
 
-  // ── goal celebration: ball → goal → "GOAL" zoom. Plays on the latest goal
-  // when the page is opened, and again whenever a new goal arrives (the prior
-  // celebration is replaced by the new scorer's). ──
   const [goal, setGoal] = useState<{ id: string; side: Side; code: string } | null>(null);
   const goalSeen = useRef<string | null>(null);
   const lastGoal = useMemo(() => events.find((e) => e.kind === 'goal') ?? null, [events]);
@@ -74,7 +61,6 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
     return () => clearTimeout(t);
   }, [lastGoal]);
 
-  // momentum from recent sided events if not provided
   const momentum = useMemo(() => {
     if (typeof homeMomentum === 'number') return homeMomentum;
     const recent = events.slice(0, 5);
@@ -83,7 +69,6 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
     return 0.25 + (home / recent.length) * 0.5;
   }, [events, homeMomentum]);
 
-  // fire a pulse + a lingering mark when a new event arrives
   useEffect(() => {
     if (!last || seen.current === last.id) return;
     seen.current = last.id;
@@ -112,20 +97,16 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
 
   return (
     <div className="pitch" aria-hidden>
-      {/* chalk lines */}
       <svg className="pitch__lines" viewBox="0 0 320 200" preserveAspectRatio="none">
         <g fill="none" stroke="var(--line)" strokeWidth="1.4">
           <rect x="6" y="6" width="308" height="188" rx="4" />
           <line x1="160" y1="6" x2="160" y2="194" />
           <circle cx="160" cy="100" r="26" />
           <circle cx="160" cy="100" r="2.4" fill="var(--line)" stroke="none" />
-          {/* left box */}
           <rect x="6" y="58" width="42" height="84" />
           <rect x="6" y="80" width="16" height="40" />
-          {/* right box */}
           <rect x="272" y="58" width="42" height="84" />
           <rect x="298" y="80" width="16" height="40" />
-          {/* corner arcs */}
           <path d="M6 16 A10 10 0 0 0 16 6" />
           <path d="M304 6 A10 10 0 0 0 314 16" />
           <path d="M6 184 A10 10 0 0 1 16 194" />
@@ -133,7 +114,6 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
         </g>
       </svg>
 
-      {/* schematic formation dots — decorative team shape, not real positions */}
       {dots.map((d) => (
         <span
           key={`${d.side}-${d.n}`}
@@ -144,15 +124,12 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
         </span>
       ))}
 
-      {/* momentum heat */}
       <div className="pitch__heat" style={{ left: heatLeft }} />
 
-      {/* threat marker (corners get their own labelled indicator below) */}
       {last && last.kind !== 'corner' && (
         <div className="pitch__threat" style={{ left: threatLeft, top: threatTop }} />
       )}
 
-      {/* event pulse */}
       {pulse && (
         <div
           key={pulse.id}
@@ -161,14 +138,12 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
         />
       )}
 
-      {/* corner — a glowing amber dot with a "Corner Kick" label */}
       {mark?.kind === 'corner' && (
         <div className="pitch__corner-glow" style={{ left: `${mark.x * 100}%`, top: `${mark.y * 100}%` }} />
       )}
       {mark?.kind === 'corner' && (
         <div
           className={['pitch__corner', mark.y < 0.25 ? 'pitch__corner--low' : ''].join(' ')}
-          // clamp horizontally so the "Corner Kick" label never clips off the edge
           style={{ left: `${Math.min(85, Math.max(15, mark.x * 100))}%`, top: `${mark.y * 100}%` }}
         >
           <span className="pitch__corner-label">Corner Kick</span>
@@ -176,7 +151,6 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
         </div>
       )}
 
-      {/* card — yellow or red box at the team's zone (team-level; not a player claim) */}
       {mark?.kind === 'card' && (
         <div
           className={['pitch__card', mark.red ? 'pitch__card--red' : 'pitch__card--yellow'].join(' ')}
@@ -184,7 +158,6 @@ export function Pitch({ events, homeMomentum, formations = { home: '4-3-3', away
         />
       )}
 
-      {/* goal celebration — ball drives into the opponent goal, then GOAL zooms in */}
       {goal && (
         <div className="pitch__goal" key={goal.id}>
           <span

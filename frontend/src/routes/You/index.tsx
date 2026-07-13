@@ -1,21 +1,25 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useAppStore } from '../../app/AppStore';
 import { fetchRecentCalls } from '../../lib/api';
 import { StreakMeter } from '../../features/streak/StreakMeter';
 import { NotificationSettings } from '../../features/notifications/NotificationSettings';
 import { ConnectTelegram } from '../../features/notifications/ConnectTelegram';
 import { AccountSettings } from '../../features/account/AccountSettings';
+import { TopUpCard } from '../../features/wallet/TopUpCard';
 import { StatLabel } from '../../components/StatLabel';
 import { Wordmark } from '../../components/AppBar';
 import { Button } from '../../components/Button';
-import { CheckIcon, CoinIcon, CrossIcon, ShareIcon } from '../../components/Icons';
+import { CheckIcon, CoinIcon, CrossIcon, ShareIcon, ShieldIcon } from '../../components/Icons';
 import { formatCoins, formatPoints } from '../../lib/format';
 import { buildBragUrl } from '../../lib/brag';
-import type { SettledCall } from '../../types';
+import type { Receipt, SettledCall } from '../../types';
+
+const ProofModal = lazy(() => import('../../features/receipt/ProofModal'));
 
 export function You() {
   const { coins, streak, multiplier, recentCalls } = useAppStore();
   const [history, setHistory] = useState<SettledCall[]>([]);
+  const [proof, setProof] = useState<Receipt | null>(null);
 
   useEffect(() => {
     fetchRecentCalls().then(setHistory);
@@ -46,7 +50,6 @@ export function You() {
       <StatLabel>You</StatLabel>
       <h1 className="mt-1 text-2xl font-extrabold tracking-display text-chalk">Your run this tournament</h1>
 
-      {/* streak card (shareable preview) */}
       <section className="relative corner-arcs mt-4 overflow-hidden rounded-card-lg border border-edge-2 bg-turf p-5 shadow-card">
         <span className="arc-b" aria-hidden />
         <div className="flex items-center justify-between">
@@ -66,14 +69,13 @@ export function You() {
         </Button>
       </section>
 
-      {/* account + notifications */}
       <div className="mt-5 flex flex-col gap-4">
+        <TopUpCard />
         <AccountSettings />
         <ConnectTelegram />
         <NotificationSettings />
       </div>
 
-      {/* history */}
       <section className="mt-5">
         <StatLabel>Recent history</StatLabel>
         <ul className="mt-3 flex flex-col gap-1.5">
@@ -90,11 +92,24 @@ export function You() {
                 <span className={['tabular text-sm font-bold', win ? 'text-grass' : 'text-muted'].join(' ')}>
                   {formatPoints(c.points)}
                 </span>
+                {c.receipt && (
+                  <button
+                    onClick={() => setProof(c.receipt!)}
+                    title="View the Merkle proof"
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-chalk-dim hover:text-grass"
+                  >
+                    <ShieldIcon size={13} /> Proof
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
       </section>
+
+      <Suspense fallback={null}>
+        <ProofModal open={!!proof} receipt={proof} onClose={() => setProof(null)} />
+      </Suspense>
     </div>
   );
 }

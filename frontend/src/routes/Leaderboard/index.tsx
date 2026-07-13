@@ -14,7 +14,6 @@ export function Leaderboard() {
     fetchLeaderboard().then(setPlayers);
   }, []);
 
-  // tournament view: same players, weighted differently for variety
   const rows =
     tab === 'match'
       ? players

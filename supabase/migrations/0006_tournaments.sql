@@ -1,7 +1,3 @@
--- Tournaments ("Prediction Battles"): public, free-entry contests on one match.
--- No escrow — the host declares a USDC prize and pays winners directly; Field
--- verifies the payment tx on-chain and never holds funds.
-
 do $$ begin
   create type tournament_status as enum
     ('upcoming','live','settling','awaiting_payout','completed','voided');
@@ -47,7 +43,6 @@ create table if not exists public.tournament_participants (
 );
 create index if not exists tparticipants_tour_idx on public.tournament_participants(tournament_id, points desc);
 
--- Tournament-mode wagers: same cards as normal play, but staked from the stack.
 create table if not exists public.tournament_predictions (
   id            uuid primary key default gen_random_uuid(),
   tournament_id text not null references public.tournaments(id) on delete cascade,
@@ -76,7 +71,6 @@ create table if not exists public.tournament_payouts (
   unique (tournament_id, rank)
 );
 
--- ── RLS: public reads; all writes via Edge Functions (service role) ──
 alter table public.tournaments             enable row level security;
 alter table public.tournament_participants enable row level security;
 alter table public.tournament_predictions  enable row level security;
@@ -91,7 +85,6 @@ create policy tpayouts_read on public.tournament_payouts for select using (true)
 drop policy if exists tpred_read_own on public.tournament_predictions;
 create policy tpred_read_own on public.tournament_predictions for select using (auth.uid() = user_id);
 
--- ── realtime ──
 do $$ begin alter publication supabase_realtime add table public.tournaments; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.tournament_participants; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.tournament_payouts; exception when duplicate_object then null; end $$;

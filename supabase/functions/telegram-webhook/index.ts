@@ -1,6 +1,3 @@
-// Endpoint Telegram calls with bot updates. Users tap a link in the app that
-// opens the bot and sends "/start <code>"; we match the code to their account
-// and save the chat so alerts can be delivered.
 import { admin } from '../_shared/supabase.ts';
 import { sendToChat } from '../_shared/telegram.ts';
 
@@ -57,7 +54,6 @@ Deno.serve(async (req) => {
       await sendToChat(db, chatId, '⏳ That link expired. Open FanField → <b>You → Connect Telegram</b> for a fresh one.');
       return ok();
     }
-    // One chat per account and one account per chat — clear any prior owners.
     await db.from('telegram_links').delete().eq('chat_id', chatId);
     await db.from('telegram_links').delete().eq('user_id', row.user_id);
     await db.from('telegram_links').insert({ user_id: row.user_id, chat_id: chatId, tg_username: tgUsername });

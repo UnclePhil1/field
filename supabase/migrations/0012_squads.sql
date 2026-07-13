@@ -1,7 +1,3 @@
--- Squads: a private group tied to one match. Friends join by link and their
--- calls on that match show up on a shared leaderboard. No new points economy —
--- the board is built from the points members already earn on the match's cards.
-
 create table if not exists public.squads (
   id          uuid primary key default gen_random_uuid(),
   match_id    text not null references public.matches(id) on delete cascade,
@@ -20,8 +16,6 @@ create table if not exists public.squad_members (
   primary key (squad_id, user_id)
 );
 
--- Reads are public (member lists render for everyone); all writes go through the
--- squads Edge Function with the service role.
 alter table public.squads         enable row level security;
 alter table public.squad_members  enable row level security;
 

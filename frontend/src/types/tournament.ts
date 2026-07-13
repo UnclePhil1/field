@@ -1,8 +1,3 @@
-// Tournaments ("Prediction Battles") — public, free-entry skill contests tied to
-// a single match. NO escrow: the host declares a USDC prize and pays winners
-// directly within 48h; Field verifies the payment tx on-chain (read-only) and
-// never custodies funds. All money/chain access is behind tournamentApi.
-
 export type TournamentStatus =
   | 'upcoming' // created, match not kicked off — joinable
   | 'live' // match in progress

@@ -109,7 +109,6 @@ export function TournamentDetail() {
         ← All tournaments
       </Link>
 
-      {/* banner */}
       <div className="relative overflow-hidden rounded-card-lg border border-edge">
         <div className="h-32 w-full bg-turf-2 sm:h-40">
           {t.bannerUrl && <img src={t.bannerUrl} alt="" className="h-full w-full object-cover opacity-90" />}
@@ -118,7 +117,6 @@ export function TournamentDetail() {
       </div>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* main column */}
         <div className="flex flex-col gap-5">
           <div>
             <div className="flex items-start justify-between gap-3">
@@ -137,7 +135,6 @@ export function TournamentDetail() {
             )}
           </div>
 
-          {/* match panel */}
           {match && (
             <Link to={`/match/${t.matchId}${joined ? `?t=${t.id}` : ''}`} className="rounded-card border border-edge bg-turf p-4 transition-colors hover:border-edge-2">
               <div className="flex items-center justify-between">
@@ -154,7 +151,6 @@ export function TournamentDetail() {
             </Link>
           )}
 
-          {/* standings */}
           <div>
             <div className="mb-2 flex items-center justify-between">
               <StatLabel>{t.status === 'upcoming' ? 'Players' : 'Standings'}</StatLabel>
@@ -164,7 +160,6 @@ export function TournamentDetail() {
           </div>
         </div>
 
-        {/* rail */}
         <aside className="flex flex-col gap-4">
           <div className="rounded-card border border-edge bg-turf p-4">
             {primary}
@@ -174,7 +169,6 @@ export function TournamentDetail() {
             )}
           </div>
 
-          {/* prize split */}
           <div className="rounded-card border border-edge bg-turf p-4">
             <div className="mb-2 flex items-center justify-between">
               <StatLabel>Prize</StatLabel>
@@ -195,7 +189,6 @@ export function TournamentDetail() {
             </p>
           </div>
 
-          {/* payout strip */}
           {payouts.length > 0 && (
             <div className="rounded-card border border-edge bg-turf p-4">
               <div className="mb-2 flex items-center justify-between">
@@ -222,7 +215,6 @@ export function TournamentDetail() {
         </aside>
       </div>
 
-      {/* join confirm */}
       <Modal open={showJoin} onClose={() => setShowJoin(false)} labelledBy="join-title">
         <div className="p-5">
           <h2 id="join-title" className="text-lg font-extrabold tracking-display text-chalk">Join this battle</h2>
@@ -239,7 +231,6 @@ export function TournamentDetail() {
         </div>
       </Modal>
 
-      {/* delete confirm (host, before kickoff) */}
       <Modal open={showDelete} onClose={() => setShowDelete(false)} labelledBy="del-title">
         <div className="p-5">
           <h2 id="del-title" className="text-lg font-extrabold tracking-display text-chalk">Delete this tournament?</h2>
@@ -254,7 +245,6 @@ export function TournamentDetail() {
         </div>
       </Modal>
 
-      {/* winner address submit */}
       <AddressModal open={showAddr} onClose={() => setShowAddr(false)} tournamentId={t.id} defaultWallet={wallet ?? ''} amount={myPayout?.amount ?? 0} rank={myPayout?.rank ?? 0} onDone={refresh} />
     </div>
   );

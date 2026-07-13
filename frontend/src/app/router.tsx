@@ -19,14 +19,11 @@ import { TournamentPayouts } from '../routes/TournamentPayouts';
 import { MyTournaments } from '../routes/MyTournaments';
 
 export const router = createBrowserRouter([
-  // Public landing (root) + wallet sign-up flow.
   { path: '/', element: <Landing /> },
   { path: '/connect', element: <Connect /> },
-  // Public share targets (viewable without an account).
   { path: '/squad/:code', element: <SquadJoin /> },
   { path: '/brag', element: <Brag /> },
   { path: '/score', element: <Score /> },
-  // Authenticated platform — guarded by wallet + username. Home is /play.
   {
     element: <RequireAuth />,
     children: [

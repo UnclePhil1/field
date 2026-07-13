@@ -11,11 +11,6 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, callFunction } from '../lib/supabase';
 import type { WalletSignIn } from '../lib/wallet';
 
-/**
- * Dual auth: a user may sign in with a WALLET or a USERNAME + password, and link
- * the other later on their profile. A valid Supabase session === ready; there is
- * no forced username step (wallet-only accounts display a shortened address).
- */
 export type AuthStatus = 'loading' | 'guest' | 'ready';
 
 interface ProfileResp {
@@ -30,13 +25,10 @@ interface AuthValue {
   username: string | null;
   connecting: boolean;
   error: string | null;
-  /** wallet register/login (signed message → wallet-auth) */
   authenticateWallet: (signed: WalletSignIn) => Promise<void>;
   registerUsername: (username: string, password: string) => Promise<void>;
   loginUsername: (username: string, password: string) => Promise<void>;
-  /** link a verified wallet to the current account */
   linkWallet: (signed: WalletSignIn) => Promise<void>;
-  /** add/change the username on the current account */
   setUsername: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
@@ -75,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [loadProfile]);
 
-  // Common: apply a session returned by an auth Edge Function.
   const applySession = useCallback(async (resp: ProfileResp) => {
     await supabase.auth.setSession({
       access_token: resp.session.access_token,

@@ -5,7 +5,6 @@ export interface NavItem {
   to: string;
   label: string;
   Icon: ComponentType<{ size?: number }>;
-  /** match nested routes too */
   match?: (path: string) => boolean;
 }
 

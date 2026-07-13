@@ -1,12 +1,9 @@
-// Country flag rendered from an ISO 3166-1 alpha-2 code via flagcdn.com.
-// Falls back to the team's letter code when no country is known (or the image
-// fails). Image-based (not emoji) so flags render on every OS, including Windows.
 import { useState } from 'react';
 
 interface FlagProps {
-  country?: string; // 'nl', 'gb-eng', …
+  country?: string; 
   code: string; // fallback 3-letter code, e.g. 'NED'
-  size?: number; // px height
+  size?: number;
   className?: string;
 }
 
@@ -27,7 +24,6 @@ export function Flag({ country, code, size = 36, className = '' }: FlagProps) {
     );
   }
 
-  // flagcdn uses lowercase codes; height variants: 20/40/80/160…
   const h = size <= 20 ? 'h20' : size <= 40 ? 'h40' : 'h80';
   return (
     <img

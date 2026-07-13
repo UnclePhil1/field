@@ -1,4 +1,3 @@
-// Firebase app + messaging init for the client (foreground).
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getMessaging, isSupported, type Messaging } from 'firebase/messaging';
 import { firebaseConfig, fcmConfigured } from './firebaseConfig';
@@ -6,7 +5,6 @@ import { firebaseConfig, fcmConfigured } from './firebaseConfig';
 let app: FirebaseApp | null = null;
 let messaging: Messaging | null = null;
 
-/** Returns the Messaging instance, or null if FCM isn't configured/supported. */
 export async function getFieldMessaging(): Promise<Messaging | null> {
   if (!fcmConfigured) return null;
   if (!(await isSupported().catch(() => false))) return null;

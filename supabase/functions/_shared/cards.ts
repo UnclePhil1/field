@@ -1,29 +1,21 @@
-// Card generation + TxLINE stat encoding. Field only ever asks about the three
-// verifiable stats: goals, cards, corners (per txline-field-guide.md §7).
-
 export type StatKind = 'goal' | 'card' | 'corner';
 export type Side = 'home' | 'away';
 export type MatchPhase = 'PRE' | '1H' | 'HT' | '2H' | 'ET' | 'FT';
 
-// Soccer full-game base keys (Participant 1 vs 2).
 const BASE: Record<StatKind, { home: number; away: number }> = {
   goal: { home: 1, away: 2 },
-  // "card" cards ask about yellow cards (the common bookings market).
   card: { home: 3, away: 4 },
   corner: { home: 7, away: 8 },
 };
 
-// Period multiplier added to the base key. Full-game = 0.
 const PERIOD_MULT: Record<MatchPhase, number> = {
   PRE: 0, '1H': 1000, HT: 1000, '2H': 2000, ET: 3000, FT: 0,
 };
 
-/** Encode a (stat, side, phase) into a TxLINE stat key: (period*1000)+base. */
 export function statKey(stat: StatKind, side: Side, phase: MatchPhase): number {
   return PERIOD_MULT[phase] + BASE[stat][side];
 }
 
-/** Map a TxLINE soccer game-phase id → our compact phase enum. */
 export function phaseFromTxline(id: number): MatchPhase {
   switch (id) {
     case 1: return 'PRE';      // NS
@@ -65,7 +57,6 @@ export interface GeneratedCard {
   txline_stat_key: number;
 }
 
-/** Build the next card for a live match. */
 export function generateCard(input: {
   phase: MatchPhase;
   homeCode: string;

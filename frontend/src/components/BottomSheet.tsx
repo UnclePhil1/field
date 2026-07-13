@@ -8,8 +8,6 @@ interface BottomSheetProps {
   children: ReactNode;
 }
 
-// A drawer that rises from the bottom and stops short of the top (leaves a strip
-// of the page dimmed above it). Portals to <body>, closes on overlay/Escape.
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
   useEffect(() => {
     if (!open) return;
@@ -36,7 +34,6 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           <span className="eyebrow">{title}</span>
           <button onClick={onClose} aria-label="Close" className="rounded-full px-2 py-1 text-sm text-muted hover:text-chalk">Close</button>
         </div>
-        {/* grab handle */}
         <div className="mx-auto mb-1 mt-1 h-1 w-10 rounded-full bg-edge-2" aria-hidden />
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">{children}</div>
       </div>

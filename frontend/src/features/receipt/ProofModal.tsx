@@ -35,13 +35,7 @@ function Step({
   );
 }
 
-/**
- * The signature trust moment. Plain language, mono hashes, honest claims:
- * Field verifies a stat against an on-chain Merkle root — read-only.
- */
 export default function ProofModal({ open, onClose, receipt }: ProofModalProps) {
-  // When opened on a real settled card, fetch the live Merkle proof so the
-  // displayed root is the actual on-chain value rather than the stored stub.
   const [resolved, setResolved] = useState<Receipt | null>(receipt);
   const [loadingProof, setLoadingProof] = useState(false);
 
@@ -95,12 +89,11 @@ export default function ProofModal({ open, onClose, receipt }: ProofModalProps) 
             <span className="tabular font-semibold text-chalk">
               {loadingProof ? 'fetching…' : view.merkleRoot}
             </span>
-            . Your result&apos;s leaf hashes back to this exact root — change one event and the root changes.
+            . Your result&apos;s leaf hashes back to this exact root. Change one event and the root changes.
           </Step>
           <Step n={3} title="Anchored on Solana">
             The root is recorded on {view.anchoredOn} by the TxODDS oracle at ref{' '}
-            <span className="tabular font-semibold text-chalk">{view.txRef}</span>. Field only reads it — no
-            transaction, no contract of ours.
+            <span className="tabular font-semibold text-chalk">{view.txRef}</span>. Field only reads it. No transaction, no contract of ours.
             {view.explorerUrl && (
               <a
                 href={view.explorerUrl}

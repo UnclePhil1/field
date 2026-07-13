@@ -6,7 +6,6 @@ interface MomentumMeterProps {
   events: MatchEvent[];
 }
 
-/** Split bar driven by recent verifiable events — interpretation, not tracking. */
 export function MomentumMeter({ home, away, events }: MomentumMeterProps) {
   const recent = events.slice(0, 6);
   const homeCount = recent.filter((e) => e.side === 'home').length;

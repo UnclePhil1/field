@@ -18,7 +18,6 @@ export function Connect() {
 
   const [tab, setTab] = useState<Tab>('username');
 
-  // route onward once we have a session (preserve a shared deep-link)
   useEffect(() => {
     if (status === 'ready') navigate(redirect ? decodeURIComponent(redirect) : '/play', { replace: true });
   }, [status, navigate, redirect]);
@@ -31,7 +30,6 @@ export function Connect() {
           <span className="inline-flex items-baseline">Field<span className="text-grass">.</span></span>
         </div>
 
-        {/* tab switch */}
         <div className="mt-6 flex gap-1 rounded-full border border-edge bg-pitch-deep/40 p-1">
           {(['username', 'wallet'] as Tab[]).map((t) => (
             <button
@@ -63,7 +61,6 @@ export function Connect() {
   );
 }
 
-/* ------------------------------- username ------------------------------- */
 function UsernameForm({
   onRegister,
   onLogin,
@@ -88,7 +85,6 @@ function UsernameForm({
       if (mode === 'register') await onRegister(username.trim(), password);
       else await onLogin(username.trim(), password);
     } catch {
-      /* surfaced via error */
     }
   }
 
@@ -133,7 +129,6 @@ function UsernameForm({
   );
 }
 
-/* -------------------------------- wallet -------------------------------- */
 function WalletConnect({
   authenticate,
   status,
@@ -150,8 +145,6 @@ function WalletConnect({
   const { walletProvider } = useAppKitProvider<Provider>('solana');
   const attempted = useRef<string | null>(null);
   const [signing, setSigning] = useState(false);
-  // Only sign after the user explicitly taps connect — never auto-sign a
-  // cached AppKit connection (that was popping the extension unprompted).
   const [initiated, setInitiated] = useState(false);
 
   useEffect(() => {

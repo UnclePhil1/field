@@ -1,5 +1,3 @@
-// push — register/unregister FCM tokens and read/update notification prefs.
-// Every token is bound to the authenticated user; no client-supplied user id.
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 import { notifyUser } from '../_shared/fcm.ts';
@@ -18,7 +16,6 @@ Deno.serve(async (req) => {
   const path = i >= 0 ? seg.slice(i + 1) : seg;
 
   try {
-    // POST /push/register  { token, platform?, userAgent? }
     if (req.method === 'POST' && path[0] === 'register') {
       const { token, platform = 'web', userAgent } = await req.json();
       if (!token) return json({ error: 'token required' }, 400);
@@ -27,12 +24,10 @@ Deno.serve(async (req) => {
         { onConflict: 'token' },
       );
       if (error) throw error;
-      // ensure a preferences row exists (defaults)
       await db.from('notification_preferences').upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
       return json({ ok: true });
     }
 
-    // POST /push/test  → send a test notification to the current user
     if (req.method === 'POST' && path[0] === 'test') {
       const { count } = await db
         .from('push_tokens')
@@ -48,7 +43,6 @@ Deno.serve(async (req) => {
       return json({ ok: true, tokens: count ?? 0, configured });
     }
 
-    // POST /push/unregister  { token }
     if (req.method === 'POST' && path[0] === 'unregister') {
       const { token } = await req.json();
       if (!token) return json({ error: 'token required' }, 400);
@@ -56,13 +50,11 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // GET /push/preferences
     if (req.method === 'GET' && path[0] === 'preferences') {
       const { data } = await db.from('notification_preferences').select('*').eq('user_id', user.id).maybeSingle();
       return json(data ?? { user_id: user.id });
     }
 
-    // PUT /push/preferences  { enabled?, match_events?, my_play?, tournaments?, followed? }
     if (req.method === 'PUT' && path[0] === 'preferences') {
       const body = await req.json();
       const row: Record<string, unknown> = { user_id: user.id, updated_at: new Date().toISOString() };

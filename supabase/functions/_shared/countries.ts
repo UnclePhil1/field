@@ -1,7 +1,3 @@
-// Map a country name (as TxLINE emits it) to an ISO 3166-1 alpha-2 code.
-// The frontend turns the code into a flag image. Covers World Cup nations and
-// common variants; unknown names just return null (frontend falls back to code).
-
 const NAME_TO_ISO2: Record<string, string> = {
   argentina: 'ar', australia: 'au', austria: 'at', belgium: 'be',
   'bosnia & herzegovina': 'ba', 'bosnia and herzegovina': 'ba', brazil: 'br',

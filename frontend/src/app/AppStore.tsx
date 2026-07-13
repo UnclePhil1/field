@@ -17,12 +17,10 @@ const STREAK_STEP = 0.1; // +10% per streak rung (mirrors server scoring)
 interface AppStoreValue {
   coins: number;
   streak: number;
-  /** streak bonus multiplier, derived from streak */
   multiplier: number;
   activeMatchId: string | null;
   recentCalls: SettledCall[];
   setActiveMatch: (id: string | null) => void;
-  /** Server-authoritative: records the wager. Settlement happens in the engine. */
   placeCall: (input: { cardId: string; pick: PredictionPick; stake: number }) => Promise<void>;
   refreshRecentCalls: () => Promise<void>;
 }
@@ -46,11 +44,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       setRecentCalls(await fetchRecentCalls());
     } catch {
-      /* leave previous list on transient error */
     }
   }, [userId]);
 
-  // Load + live-subscribe the player's profile (coins, streak) and settlements.
   useEffect(() => {
     if (!userId) {
       setCoins(0);

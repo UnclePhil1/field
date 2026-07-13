@@ -1,9 +1,3 @@
-// Squads — private group play over a single match.
-//   POST /squads                 { matchId }  -> create (or reuse your squad)
-//   POST /squads/:code/join                   -> join by invite code
-//   GET  /squads/:code                        -> squad + live standings
-//   GET  /squads/mine?matchId=..              -> your squad code for a match (or null)
-// Standings reuse the points each member has already earned on the match's cards.
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -23,7 +17,6 @@ async function standings(db: any, squadId: string, matchId: string, meId: string
   const ids = (members ?? []).map((m: any) => m.user_id);
   if (ids.length === 0) return [];
 
-  // points earned on this match = sum of settlement points over the match's cards
   const { data: cards } = await db.from('prediction_cards').select('id').eq('match_id', matchId);
   const cardIds = (cards ?? []).map((c: any) => c.id);
   const pts: Record<string, number> = {};
@@ -60,7 +53,6 @@ Deno.serve(async (req) => {
   const method = req.method;
 
   try {
-    // GET /squads/mine?matchId=..
     if (method === 'GET' && path[0] === 'mine') {
       const user = await getUser(req);
       if (!user) return json({ squad: null });
@@ -76,7 +68,6 @@ Deno.serve(async (req) => {
       return json({ squad: row ? { code: (row as any).squads.invite_code, name: (row as any).squads.name } : null });
     }
 
-    // POST /squads  (create or reuse the caller's squad for a match)
     if (method === 'POST' && path.length === 0) {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -85,7 +76,6 @@ Deno.serve(async (req) => {
       const { data: match } = await db.from('matches').select('id').eq('id', matchId).maybeSingle();
       if (!match) return json({ error: 'match not found' }, 404);
 
-      // reuse an existing squad this user already owns for the match
       const { data: existing } = await db
         .from('squads')
         .select('*')
@@ -104,7 +94,6 @@ Deno.serve(async (req) => {
         if (error) throw error;
         squad = data;
       }
-      // owner is always a member
       await db.from('squad_members').upsert({ squad_id: squad.id, user_id: user.id }, { onConflict: 'squad_id,user_id' });
       return json({ code: squad.invite_code, name: squad.name, matchId });
     }
@@ -112,7 +101,6 @@ Deno.serve(async (req) => {
     const code = path[0];
     if (!code) return json({ error: 'not found' }, 404);
 
-    // POST /squads/:code/join
     if (method === 'POST' && path[1] === 'join') {
       const user = await getUser(req);
       if (!user) return json({ error: 'unauthorized' }, 401);
@@ -122,7 +110,6 @@ Deno.serve(async (req) => {
       return json({ code: squad.invite_code, name: squad.name, matchId: squad.match_id });
     }
 
-    // GET /squads/:code
     if (method === 'GET' && path.length === 1) {
       const user = await getUser(req);
       const { data: squad } = await db.from('squads').select('*').eq('invite_code', code).maybeSingle();

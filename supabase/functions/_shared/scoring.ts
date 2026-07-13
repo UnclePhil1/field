@@ -1,6 +1,3 @@
-// Server-authoritative scoring — ported verbatim from the frontend's original
-// AppStore.settleCard math so behaviour is identical, just trustworthy now.
-
 export const STREAK_STEP = 0.1; // +10% payout per streak rung
 
 export interface ScoreResult {

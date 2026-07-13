@@ -9,13 +9,6 @@ export interface LiveMatch {
   ready: boolean;
 }
 
-/**
- * The one real-time hook. Components only ever see {match, events, card}.
- *
- * subscribeMatch (lib/api) assembles the snapshot from Supabase and pushes a
- * fresh one whenever the match, its events, or its current card change via
- * Supabase Realtime. The hook and every consuming component stay source-agnostic.
- */
 export function useLiveMatch(matchId: string): LiveMatch {
   const [state, setState] = useState<LiveMatch>({
     match: null,

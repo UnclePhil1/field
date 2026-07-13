@@ -1,18 +1,12 @@
 import { formatCountdown } from '../lib/format';
 
 interface CountdownRingProps {
-  /** 1 = full window, 0 = locked */
   progress: number;
-  /** seconds remaining */
   remaining: number;
   size?: number;
   label?: string;
 }
 
-/**
- * Kickoff-circle countdown. The sweep is flare (urgent), the track is faint
- * chalk. Time renders in mono. Honors reduced motion via short transition.
- */
 export function CountdownRing({
   progress,
   remaining,

@@ -5,8 +5,6 @@ import { Button } from '../../components/Button';
 import { Flag } from '../../components/Flag';
 import type { Match } from '../../types';
 
-// Call the Score: predict the final score before kickoff. The side you back also
-// feeds the Fan War bar — which fanbase is showing up. Exact score pays big.
 export function CallScoreCard({ match }: { match: Match }) {
   const upcoming = match.status === 'upcoming';
   const [mine, setMine] = useState<MatchPrediction | null>(null);
@@ -45,10 +43,8 @@ export function CallScoreCard({ match }: { match: Match }) {
   const total = fanWar.home + fanWar.away;
 
   if (!loaded) {
-    // Only reserve space before kickoff; otherwise stay quiet until data says show.
     return upcoming ? <div className="h-40 animate-pulse rounded-card border border-edge bg-turf" /> : null;
   }
-  // After kickoff with no pick and no crowd yet — nothing to show.
   if (!upcoming && !mine && total === 0) return null;
   const homePct = total ? Math.round((fanWar.home / total) * 100) : 50;
 
@@ -59,7 +55,6 @@ export function CallScoreCard({ match }: { match: Match }) {
         Predict the final score before kickoff. Exact score pays big; the right winner still pays.
       </p>
 
-      {/* score entry (only before kickoff) */}
       {upcoming ? (
         <>
           <div className="mt-4 flex items-center justify-center gap-4">
@@ -99,7 +94,6 @@ export function CallScoreCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {/* Fan War */}
       {total > 0 && (
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-[11px] font-bold">

@@ -14,7 +14,6 @@ export function MatchCard({ match }: { match: Match }) {
   const [fanWar, setFanWar] = useState<{ home: number; away: number } | null>(null);
   const [scoreOpen, setScoreOpen] = useState(false);
 
-  // Teaser: how the crowd is leaning (from Call the Score side-picks). Best-effort.
   useEffect(() => {
     let on = true;
     matchPredictApi.get(match.id)
@@ -26,8 +25,6 @@ export function MatchCard({ match }: { match: Match }) {
   const fwTotal = fanWar ? fanWar.home + fanWar.away : 0;
   const fwHomePct = fwTotal ? Math.round((fanWar!.home / fwTotal) * 100) : 50;
 
-  // Only live matches are playable/clickable. Upcoming matches render as a
-  // static card so users can't enter a room that hasn't kicked off
   const baseClass =
     'group relative corner-arcs block rounded-card border border-edge bg-turf p-4 transition-colors';
   const Wrapper = ({ children }: { children: React.ReactNode }) =>

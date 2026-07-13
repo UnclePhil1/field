@@ -9,7 +9,6 @@ import { buildSignInPayload, shortAddress } from '../../lib/wallet';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
-/** Profile account panel: shows what you have, and lets you add the other method. */
 export function AccountSettings() {
   const { username, wallet, setUsername, linkWallet } = useAuth();
   return (
@@ -77,7 +76,6 @@ function WalletRow({ wallet, linkWallet }: { wallet: string | null; linkWallet: 
   const [err, setErr] = useState<string | null>(null);
   const attempted = useRef<string | null>(null);
 
-  // once the user opts to link and a wallet connects, sign + attach it
   useEffect(() => {
     if (!linking || !isConnected || !address || !walletProvider || attempted.current === address) return;
     attempted.current = address;

@@ -1,4 +1,3 @@
-/** The Field logo mark. Pairs with the "Field." wordmark. */
 export function Logo({ size = 22, className = '' }: { size?: number; className?: string }) {
   return (
     <img

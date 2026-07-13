@@ -1,12 +1,9 @@
-// Sends messages through the Telegram bot. Needs the TELEGRAM_BOT_TOKEN secret;
-// APP_URL turns in-app paths into full links.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? '';
 const APP_URL = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '');
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-/** True only when the bot token is set. */
 export const telegramEnabled = !!BOT_TOKEN;
 
 export interface TgPayload {
@@ -25,7 +22,6 @@ function absolute(url?: string): string | undefined {
   return APP_URL ? `${APP_URL}${url.startsWith('/') ? '' : '/'}${url}` : undefined;
 }
 
-/** Send an HTML message to a chat. Drops the saved link if the user blocked the bot. */
 export async function sendToChat(db: SupabaseClient, chatId: string, text: string, url?: string): Promise<boolean> {
   if (!telegramEnabled) return false;
   const link = absolute(url);
@@ -42,7 +38,6 @@ export async function sendToChat(db: SupabaseClient, chatId: string, text: strin
     }),
   });
   if (!res.ok) {
-    // User blocked the bot or the chat is gone — remove the dead link.
     if (res.status === 403 || res.status === 400) {
       await db.from('telegram_links').delete().eq('chat_id', chatId);
     }
@@ -51,7 +46,6 @@ export async function sendToChat(db: SupabaseClient, chatId: string, text: strin
   return true;
 }
 
-/** Send to a user's linked Telegram chat (no-op if unlinked or disabled). */
 export async function sendTelegram(db: SupabaseClient, userId: string, p: TgPayload): Promise<void> {
   if (!telegramEnabled) return;
   const { data: link } = await db.from('telegram_links').select('chat_id').eq('user_id', userId).maybeSingle();
@@ -60,7 +54,6 @@ export async function sendTelegram(db: SupabaseClient, userId: string, p: TgPayl
   await sendToChat(db, String(link.chat_id), text, p.url);
 }
 
-/** Fan a message to many users' Telegram chats in one pass (skips unlinked). */
 export async function broadcastTelegram(db: SupabaseClient, userIds: string[], p: TgPayload): Promise<void> {
   if (!telegramEnabled || userIds.length === 0) return;
   const { data: links } = await db.from('telegram_links').select('chat_id').in('user_id', userIds);

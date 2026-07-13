@@ -8,10 +8,6 @@ interface SheetProps {
   children: ReactNode;
 }
 
-/**
- * A right-side slide-in drawer (Field-themed, shadcn-style Sheet behavior).
- * Portals to <body>, closes on overlay click or Escape, locks scroll while open.
- */
 export function Sheet({ open, onClose, title, children }: SheetProps) {
   useEffect(() => {
     if (!open) return;

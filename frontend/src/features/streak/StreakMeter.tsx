@@ -4,7 +4,6 @@ import { formatMultiplier } from '../../lib/format';
 interface StreakMeterProps {
   streak: number;
   multiplier: number;
-  /** rungs to display */
   rungs?: number;
 }
 

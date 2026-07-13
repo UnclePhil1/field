@@ -6,21 +6,18 @@ import { pushApi } from './pushApi';
 
 export type PermState = 'default' | 'granted' | 'denied' | 'unsupported';
 
-/** iOS Safari can only receive push when Field is installed as a PWA. */
 export function isIos(): boolean {
   return typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 export function isStandalone(): boolean {
   return (
     (typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches) ||
-    // iOS Safari
     (typeof navigator !== 'undefined' && (navigator as unknown as { standalone?: boolean }).standalone === true)
   );
 }
 
 export interface NotificationsState {
   supported: boolean;
-  /** true only where enabling can actually work (e.g. not iOS-in-browser) */
   canEnable: boolean;
   needsInstall: boolean; // iOS, not installed → show Add to Home Screen
   permission: PermState;
@@ -42,7 +39,6 @@ export function useNotifications(): NotificationsState {
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  // Foreground messages → let the app show an in-app toast.
   useEffect(() => {
     let unsub: (() => void) | undefined;
     if (permission !== 'granted') return;
@@ -63,8 +59,6 @@ export function useNotifications(): NotificationsState {
     return () => unsub?.();
   }, [permission]);
 
-  // Re-register the token on app open if permission is already granted (handles
-  // dormant-SW re-subscription + token refresh).
   useEffect(() => {
     if (permission !== 'granted') return;
     void refreshToken();

@@ -1,4 +1,3 @@
-// Shared CORS headers + preflight helper for all browser-facing functions.
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':

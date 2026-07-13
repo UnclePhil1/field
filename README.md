@@ -2,8 +2,7 @@
 
 Play the match while it happens. FanField is a live, play-along football game: you
 predict the next goal, card, or corner over a short window, build a streak, and
-climb the leaderboard. It is free to play and it is not a betting site — you play
-with points and coins, not real-money stakes.
+climb the leaderboard. It is free to play. You play with points and coins, not real-money stakes.
 
 Every result is settled from a verifiable live data feed, so outcomes are decided
 by what actually happened on the pitch, not by a house. Sponsor-funded tournaments
@@ -12,10 +11,13 @@ on-chain. FanField never holds anyone's money.
 
 Live at **fanfield.xyz**
 
+Demo video (walkthrough): **https://youtu.be/O44zeDOH-YM**
+
 ---
 
 ## Contents
 
+- [Demo video](#demo-video)
 - [Brief technical documentation](#brief-technical-documentation)
 - [What you can do](#what-you-can-do)
 - [How a prediction works](#how-a-prediction-works)
@@ -32,6 +34,13 @@ Live at **fanfield.xyz**
 
 ---
 
+## Demo video
+
+A full product walkthrough, including the problem it solves, a live app tour, and
+how the TxLINE feed powers the backend:
+
+**https://youtu.be/O44zeDOH-YM**
+
 ## Brief technical documentation
 
 ### Core idea
@@ -46,7 +55,7 @@ that keeps players coming back before, during, and after the whistle.
 
 ### Business highlights
 
-- Free to play and not a betting product — players use points and coins, which
+- Free to play: players use points and coins, which
   lowers the legal and trust barrier and widens the audience.
 - Built for one of the largest live audiences on earth (the World Cup), where the
   gap between goals is exactly the attention FanField captures.
@@ -55,6 +64,33 @@ that keeps players coming back before, during, and after the whistle.
   keeps the platform out of custody and compliance-heavy money flows.
 - Growth is built in: squad invites, shareable "brag" cards, and Telegram alerts
   each turn one player into several.
+
+### Revenue
+
+FanField earns money in two clear ways, and neither of them turns the game into
+betting.
+
+The first way is coin top-ups. The game is free, and every player gets a daily
+coin refill. When a player runs low and does not want to wait for the refill, they
+can buy more. The starter pack is 1,000 coins for 3 dollars, paid in USDC or SOL,
+and it opens up automatically once a balance drops below 100. Coins are only used
+to play inside the app and can never be cashed out, so buying them is the same as
+buying credits in any game, not placing a wager. This is the main income line
+because it grows with how much people play.
+
+The second way is a claim fee on real-stake wins. Score Link has a real-stake mode
+where a player can back an exact scoreline with real funds instead of coins. Those
+funds lock in a vault for the match. At full time, the players who called the exact
+score split the funds that were staked on the wrong scorelines. FanField takes no
+cut when a player enters. Instead, when a winner comes to claim their winnings, a
+small fee is taken from the amount they withdraw. So the platform only earns after
+a player has already won and is cashing out, which keeps entry free of any house
+edge. This mode is opt-in and marked as coming soon in the app while the vault and
+payout flow are finished.
+
+Both models keep FanField out of heavy money handling. Coins are just game credits,
+and for real-stake play the funds sit in a vault and are only touched to pay
+winners, with the small fee taken on the claim.
 
 ### Technical highlights
 
@@ -70,8 +106,8 @@ that keeps players coming back before, during, and after the whistle.
   derived from the implied win probability, so harder calls pay more.
 - The browser never holds a secret or talks to the feed. Row Level Security scopes
   user data; all privileged writes run server-side with the service role.
-- Notifications fan out to three channels from one call — in-app inbox (Realtime),
-  browser push (FCM), and Telegram — each gated by user preference.
+- Notifications fan out to three channels from one call. In-app inbox (Realtime),
+  browser push (FCM), and Telegram, each gated by user preference.
 
 ### TxLINE endpoints used
 
@@ -169,7 +205,7 @@ credentials are ever exposed to the browser.
 ## Tech stack
 
 - Frontend: React 18, Vite, TypeScript, Tailwind CSS.
-- Backend: Supabase — Postgres, Auth, Realtime, and Edge Functions (Deno).
+- Backend: Supabase, Postgres, Auth, Realtime, and Edge Functions (Deno).
 - Data: TxODDS TxLINE feed.
 - Chain: Solana, read through an RPC endpoint for payout verification and receipts.
 - Wallet sign-in: Reown AppKit (WalletConnect and injected wallets).

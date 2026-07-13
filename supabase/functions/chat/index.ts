@@ -1,7 +1,3 @@
-// chat — guarded sends for match + squad chat.
-//   POST /chat         { scope, scopeId, body }  -> send a message
-//   POST /chat/report  { messageId }             -> flag a message
-// Reads happen client-side over Realtime (RLS controls who sees squad chat).
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -10,7 +6,6 @@ const BURST_LIMIT = 5;       // messages per window
 const WINDOW_MS = 15_000;
 const MIN_GAP_MS = 1_500;
 
-// A small, deliberately short block list — masks the word rather than rejecting.
 const BLOCKED = ['fuck', 'shit', 'bitch', 'cunt', 'nigger', 'faggot', 'asshole'];
 function clean(text: string): string {
   let out = text;
@@ -47,19 +42,16 @@ Deno.serve(async (req) => {
     if (!text) return json({ error: 'empty message' }, 400);
     if (text.length > MAX_LEN) return json({ error: `Keep it under ${MAX_LEN} characters` }, 400);
 
-    // squad chat: caller must be a member of that squad
     if (scope === 'squad') {
       const { data: squad } = await db.from('squads').select('id').eq('invite_code', scopeId).maybeSingle();
       if (!squad) return json({ error: 'squad not found' }, 404);
       const { data: mem } = await db.from('squad_members').select('user_id').eq('squad_id', squad.id).eq('user_id', user.id).maybeSingle();
       if (!mem) return json({ error: 'join the squad to chat' }, 403);
     } else {
-      // match chat: the match must exist
       const { data: match } = await db.from('matches').select('id').eq('id', scopeId).maybeSingle();
       if (!match) return json({ error: 'match not found' }, 404);
     }
 
-    // rate limit
     const since = new Date(Date.now() - WINDOW_MS).toISOString();
     const { data: recent } = await db
       .from('chat_messages')

@@ -1,10 +1,5 @@
-// TxLINE fixtures don't carry a knockout-round label, so we derive the World Cup
-// 2026 stage from the kickoff date (the published schedule). Best-effort; only
-// the World Cup is mapped, other competitions return null.
-
 interface Window { from: string; to: string; label: string }
 
-// WC 2026 schedule windows (UTC dates, inclusive).
 const WC_2026: Window[] = [
   { from: '2026-06-11', to: '2026-06-27', label: 'Group Stage' },
   { from: '2026-06-28', to: '2026-07-03', label: 'Round of 32' },

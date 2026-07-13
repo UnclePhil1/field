@@ -3,15 +3,9 @@ import { useAuth } from '../app/AuthStore';
 import { AppShell } from '../app/AppShell';
 import { Logo } from './Logo';
 
-/**
- * Gate for the main platform. Routes the user to the right step of the
- * wallet sign-up flow until they have both a connected wallet and a
- * username, then renders the app shell.
- */
 export function RequireAuth() {
   const { status } = useAuth();
   const location = useLocation();
-  // Preserve the intended URL so a shared deep link survives the sign-in flow.
   const redirect = encodeURIComponent(location.pathname + location.search);
 
   if (status === 'loading') {

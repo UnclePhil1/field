@@ -11,7 +11,6 @@ export function shortWallet(w: string, lead = 4, tail = 4): string {
   return `${w.slice(0, lead)}…${w.slice(-tail)}`;
 }
 
-// Cluster for explorer links — keep in sync with the backend SOLANA_CLUSTER.
 const SOLANA_CLUSTER = (import.meta.env.VITE_SOLANA_CLUSTER as string) ?? 'mainnet-beta';
 export function explorerTx(txSig: string, cluster = SOLANA_CLUSTER): string {
   const qs = cluster === 'mainnet-beta' ? '' : `?cluster=${cluster}`;
@@ -37,7 +36,6 @@ export function StatusPill({ status }: { status: TournamentStatus }) {
   );
 }
 
-/** Countdown string for a 48h payout deadline; flags overdue. */
 export function payoutCountdown(deadlineIso?: string): { text: string; overdue: boolean } {
   if (!deadlineIso) return { text: '', overdue: false };
   const diff = new Date(deadlineIso).getTime() - Date.now();

@@ -17,14 +17,11 @@ import { Receipt } from '../receipt/Receipt';
 interface PredictionCardProps {
   card: Card;
   onViewProof: (r: ReceiptType) => void;
-  /** when set, wager from this tournament's points stack instead of casual coins */
   tournament?: { id: string; points: number };
   onTournamentChange?: () => void;
-  /** true at half-time — predictions are paused until the second half */
   paused?: boolean;
 }
 
-/** Highlight the subject team code inside the question in grass. */
 function Question({ text, team }: { text: string; team: string }) {
   const parts = text.split(team);
   return (
@@ -39,7 +36,6 @@ function Question({ text, team }: { text: string; team: string }) {
   );
 }
 
-/** The current user's settlement for a card, fetched from the server. */
 interface MyResult {
   result: 'win' | 'loss' | 'void';
   payout: number;
@@ -59,7 +55,6 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
   const [error, setError] = useState<string | null>(null);
   const [myResult, setMyResult] = useState<MyResult | null>(null);
 
-  // reset everything when a new card arrives
   useEffect(() => {
     setPick(null);
     setStake(100);
@@ -69,10 +64,6 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
     setMyResult(null);
   }, [card.id]);
 
-  // when the engine settles the card, pull this user's settlement row (with a
-  // short retry, since the card update and settlement insert race slightly).
-  // In tournament mode the stack is settled server-side; we derive the result
-  // locally from the (shared) card outcome vs. the committed pick.
   useEffect(() => {
     if (card.status !== 'settled' || !committed || myResult) return;
     if (tournament) {
@@ -105,7 +96,7 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
     };
   }, [card.status, card.id, card.outcome, card.multiplier, committed, userId, myResult, tournament, onTournamentChange]);
 
-  const maxStake = useMemo(() => Math.max(25, Math.min(balance, 500)), [balance]);
+  const maxStake = useMemo(() => Math.max(100, Math.min(balance, 500)), [balance]);
   const locked = !!committed;
   const isSettled = card.status === 'settled';
 
@@ -125,12 +116,10 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
     }
   }
 
-  // ---- SETTLED ----
   if (isSettled) {
     return <SettledView card={card} result={myResult} onViewProof={onViewProof} />;
   }
 
-  // ---- HALF-TIME (paused) ----
   if (paused && !locked) {
     return (
       <section className="relative corner-arcs rounded-card-lg border border-edge bg-turf p-5 text-center shadow-card">
@@ -142,7 +131,6 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
     );
   }
 
-  // ---- LIVE ----
   return (
     <section className="relative corner-arcs rounded-card-lg border border-edge-2 bg-turf p-4 shadow-card sm:p-5">
       <span className="arc-b" aria-hidden />
@@ -170,7 +158,6 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
         </div>
       </div>
 
-      {/* Yes / No */}
       <div className="mt-4 grid grid-cols-2 gap-3">
         <PickPill
           side="yes"
@@ -188,7 +175,6 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
         />
       </div>
 
-      {/* stake */}
       <div className="mt-3">
         <div className="mb-1.5 flex items-center justify-between">
           <StatLabel>Your stake</StatLabel>
@@ -198,10 +184,9 @@ export function PredictionCard({ card, onViewProof, tournament, onTournamentChan
             <span className="tabular text-xs text-muted">streak bonus {formatMultiplier(multiplier)}</span>
           )}
         </div>
-        <StakeStepper value={stake} onChange={setStake} max={maxStake} disabled={locked} />
+        <StakeStepper value={stake} onChange={setStake} min={100} step={50} max={maxStake} disabled={locked} />
       </div>
 
-      {/* CTA */}
       <div className="mt-4">
         {locked ? (
           <div className="flex items-center justify-center gap-2 rounded-[15px] border border-grass/30 bg-grass/10 px-4 py-3.5 text-center text-sm font-bold text-grass">
@@ -259,7 +244,6 @@ function PickPill({
   );
 }
 
-/* ----------------------------- settled view ----------------------------- */
 function SettledView({
   card,
   result,
@@ -269,7 +253,6 @@ function SettledView({
   result: MyResult | null;
   onViewProof: (r: ReceiptType) => void;
 }) {
-  // No call made (or voided) — neutral close.
   if (!result || result.result === 'void') {
     return (
       <section className="relative corner-arcs rounded-card-lg border border-edge bg-turf p-5 shadow-card">

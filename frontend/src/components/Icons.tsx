@@ -1,8 +1,5 @@
 import type { SVGProps } from 'react';
 
-// Inline SVG keeps the stack tiny — no second icon library.
-// All icons inherit `currentColor` and default to 1em so they scale with text.
-
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
 function base({ size = 20, ...props }: IconProps) {

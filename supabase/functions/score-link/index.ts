@@ -1,9 +1,3 @@
-// score-link — the exact-scoreline market.
-//   GET  /score-link?matchId=..                         -> priced board + my picks
-//   POST /score-link  { matchId, homeGoals, awayGoals, stake }  -> stake on a line
-// Pricing is no-fee parimutuel: probability comes from a goals model tilted by how
-// fans back each team (Fan War), blended with what's already staked on each line.
-// multiplier = 1 / probability; entry¢ = probability × 100. Settled at full time.
 import { admin, getUser } from '../_shared/supabase.ts';
 import { json, preflight } from '../_shared/cors.ts';
 
@@ -23,7 +17,6 @@ function tagFor(prob: number): string {
   return 'Moonshot';
 }
 
-/** Probability for every grid scoreline, from the goals model + staked pool. */
 function priceBoard(sideHomeShare: number, pool: Map<string, number>): Map<string, number> {
   const lamH = BASE_LAMBDA * (0.7 + 0.6 * sideHomeShare);
   const lamA = BASE_LAMBDA * (0.7 + 0.6 * (1 - sideHomeShare));
@@ -123,14 +116,12 @@ Deno.serve(async (req) => {
       const { data: prof } = await db.from('profiles').select('coins').eq('id', user.id).maybeSingle();
       if (!prof || prof.coins < s) return json({ error: 'not enough coins' }, 400);
 
-      // lock the multiplier at this moment
       const [pool, share] = await Promise.all([poolFor(db, matchId), sideShare(db, matchId)]);
       const probs = priceBoard(share, pool);
       const prob = probs.get(`${Math.min(h, MAXG)}-${Math.min(a, MAXG)}`) ?? (1 / (MAX_MULT));
       const multiplier = Math.round(multiplierOf(prob) * 100) / 100;
       const entryCents = Math.round((100 / multiplier) * 10) / 10;
 
-      // one Score Link per match, locked once staked — reject any existing pick
       const { data: existing } = await db.from('score_link_picks')
         .select('id').eq('match_id', matchId).eq('user_id', user.id).limit(1).maybeSingle();
       if (existing) return json({ error: 'you’ve already made your Score Link pick for this match' }, 409);

@@ -8,8 +8,6 @@ import { Sheet } from '../../components/Sheet';
 import { ChatIcon } from '../../components/Icons';
 import { ChatPanel } from './ChatPanel';
 
-// A chat button pinned bottom-right on every screen. Opens a drawer where the
-// user switches between the public match room and their private squad chat.
 export function FloatingChat() {
   const { activeMatchId } = useAppStore();
   const { userId } = useAuth();
@@ -21,7 +19,6 @@ export function FloatingChat() {
   const openRef = useRef(false);
   useEffect(() => { openRef.current = open; if (open) setUnread(0); }, [open]);
 
-  // When not inside a match room, fall back to the current live match.
   useEffect(() => {
     if (activeMatchId) return;
     fetchMatches().then((ms) => setLiveId(ms.find((m) => m.status === 'live')?.id ?? null)).catch(() => {});
@@ -36,7 +33,6 @@ export function FloatingChat() {
 
   useEffect(() => { if (!squadCode && tab === 'squad') setTab('match'); }, [squadCode, tab]);
 
-  // Count messages from others that land while the drawer is closed.
   useEffect(() => {
     const ids = [matchId, squadCode].filter(Boolean) as string[];
     if (ids.length === 0) return;

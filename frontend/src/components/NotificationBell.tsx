@@ -14,7 +14,6 @@ interface Notification {
   created_at: string;
 }
 
-/** In-app notification inbox: bell + unread badge + dropdown, live via Realtime. */
 export function NotificationBell() {
   const { userId } = useAuth();
   const navigate = useNavigate();

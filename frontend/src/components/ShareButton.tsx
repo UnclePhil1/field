@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { ShareIcon, CheckIcon } from './Icons';
 
-/** Copy a shareable link (defaults to the current page URL). */
 export function ShareButton({ url, label = 'Share', className = '' }: { url?: string; label?: string; className?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     const link = url ?? window.location.href;
     try {
-      // native share sheet on mobile where available, else clipboard
       if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
         await navigator.share({ url: link, title: document.title });
         return;
@@ -17,7 +15,6 @@ export function ShareButton({ url, label = 'Share', className = '' }: { url?: st
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      // clipboard may be blocked; ignore
     }
   }
 

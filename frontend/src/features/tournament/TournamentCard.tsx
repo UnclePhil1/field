@@ -15,7 +15,6 @@ export function TournamentCard({ tournament: t, match }: { tournament: Tournamen
       to={`/tournaments/${t.id}`}
       className="group relative corner-arcs flex flex-col overflow-hidden rounded-card border border-edge bg-turf transition-colors hover:border-edge-2 focus-visible:border-grass/60"
     >
-      {/* banner */}
       <div className="relative h-24 w-full overflow-hidden bg-turf-2">
         {t.bannerUrl ? (
           <img src={t.bannerUrl} alt="" className="h-full w-full object-cover opacity-90" loading="lazy" />
@@ -30,7 +29,6 @@ export function TournamentCard({ tournament: t, match }: { tournament: Tournamen
       <div className="flex flex-1 flex-col p-4">
         <h3 className="truncate text-base font-extrabold tracking-display text-chalk">{t.title}</h3>
 
-        {/* the match */}
         <p className="mt-1 text-xs text-muted">
           {match ? (
             <>
@@ -46,7 +44,6 @@ export function TournamentCard({ tournament: t, match }: { tournament: Tournamen
           )}
         </p>
 
-        {/* meta row */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Chip tone="grass" mono icon={<TrophyIcon size={13} />}>
             {formatPrize(t.prize)}

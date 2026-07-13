@@ -1,4 +1,3 @@
-// Squads client — private group play over one match.
 import { supabase, functionsBase } from './supabase';
 
 const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;

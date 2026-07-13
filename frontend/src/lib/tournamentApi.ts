@@ -1,6 +1,3 @@
-// Tournaments client — the single boundary the UI calls. Talks to the real
-// `tournaments` Edge Function (Postgres-backed). No mocks, no chain calls here:
-// money/chain logic lives server-side; the host pays directly and Field verifies.
 import { supabase, functionsBase } from './supabase';
 import type {
   CreateTournamentInput,

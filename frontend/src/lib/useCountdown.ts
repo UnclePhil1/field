@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * Counts down to an absolute epoch (ms). Returns seconds remaining and
- * a 0..1 progress value (1 = full window, 0 = locked).
- */
 export function useCountdown(locksAt: number, windowSeconds: number) {
   const compute = () => Math.max(0, (locksAt - Date.now()) / 1000);
   const [remaining, setRemaining] = useState(compute);
