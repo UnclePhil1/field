@@ -194,7 +194,7 @@ source of truth for both the live experience and settlement:
   values and turned into pitch events and prediction settlement.
 - Odds. When market odds are available, the implied win probability is used to price
   a prediction card's multiplier, so calls are weighted by how likely they are.
-- Verifiable settlement. Prediction cards are resolved against the feed, and each
+- Verifiable settlement(https://explorer.solana.com/tx/4gD2p84DqP9uSJ5PXt1UoKsEVo8YpPg9H6GZLY4PTYWDJcyXkoLQpMKrysxCCwcA6gLjRvxv3MkxRukJbjxQ42h9). Prediction cards are resolved against the feed, and each
   settled call keeps a receipt that references the TxODDS oracle anchored on Solana.
 
 Access uses a guest token plus an API token, handled entirely on the server. No feed

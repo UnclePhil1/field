@@ -19,8 +19,11 @@ import { TournamentCreate } from '../routes/TournamentCreate';
 import { TournamentPayouts } from '../routes/TournamentPayouts';
 import { MyTournaments } from '../routes/MyTournaments';
 
+// agent.fanfield.xyz opens straight into Angel.
+const isAgentHost = typeof window !== 'undefined' && window.location.hostname.startsWith('agent.');
+
 export const router = createBrowserRouter([
-  { path: '/', element: <Landing /> },
+  { path: '/', element: isAgentHost ? <Navigate to="/angel" replace /> : <Landing /> },
   { path: '/connect', element: <Connect /> },
   { path: '/squad/:code', element: <SquadJoin /> },
   { path: '/brag', element: <Brag /> },

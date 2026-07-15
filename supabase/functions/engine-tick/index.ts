@@ -10,6 +10,7 @@ import { countryToIso2 } from '../_shared/countries.ts';
 import { prefAllows } from '../_shared/fcm.ts';
 import { notifyAll, notifyInbox } from '../_shared/notify.ts';
 import { broadcastTelegram, telegramEnabled } from '../_shared/telegram.ts';
+import { anchorEnabled, anchorStatOnChain } from '../_shared/anchor.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const WC_COMPETITION_ID = Number(Deno.env.get('TXLINE_COMPETITION_ID') ?? '0') || undefined;
@@ -501,12 +502,17 @@ Deno.serve(async (req) => {
       const seq = Number(latest?.Seq ?? 0);
       let merkleRoot = '—';
       let merkleRootFull: string | null = null;
+      let anchorSig: string | null = null;
       if (outcome != null && m.txline_fixture_id && card.txline_stat_key != null && seq > 0) {
         try {
           const validation = await fetchStatValidation(session, Number(m.txline_fixture_id), seq, Number(card.txline_stat_key));
           const r = merkleRootFrom(validation);
           merkleRoot = r.short;
           merkleRootFull = r.full;
+          if (anchorEnabled) {
+            const memo = `FanField proof · ${resolvedLabel} · fixture ${m.txline_fixture_id} · seq ${seq} · key ${card.txline_stat_key} · validate_stat`;
+            anchorSig = await anchorStatOnChain(validation, memo);
+          }
         } catch { /* keep '—' */ }
       }
 
@@ -516,8 +522,11 @@ Deno.serve(async (req) => {
         merkleRoot,
         merkleRootFull,
         anchoredOn: CLUSTER_LABEL,
-        txRef: m.txline_fixture_id ? `fix:${m.txline_fixture_id}/seq:${seq}/key:${card.txline_stat_key}` : '—',
-        explorerUrl: PROGRAM_EXPLORER_URL,
+        txRef: anchorSig
+          ? `${anchorSig.slice(0, 8)}…${anchorSig.slice(-6)}`
+          : m.txline_fixture_id ? `fix:${m.txline_fixture_id}/seq:${seq}/key:${card.txline_stat_key}` : '—',
+        anchorTx: anchorSig,
+        explorerUrl: anchorSig ? `https://explorer.solana.com/tx/${anchorSig}${CLUSTER_QS}` : PROGRAM_EXPLORER_URL,
         cardId: card.id,
       };
 
