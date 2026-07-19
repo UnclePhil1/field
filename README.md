@@ -47,12 +47,12 @@ how the TxLINE feed powers the backend:
 ### Core idea
 
 Football is most fun when you have something riding on the next moment. FanField
-turns any live match into a fast, social game: players make short yes/no calls on
-the next goal, card, or corner, and every call is settled from a verifiable live
-data feed rather than by a house. Because the same feed decides every outcome, the
-result is identical for everyone and can be checked. On top of that sits a light
-social and rewards layer, streaks, squads, chat, and sponsor-funded tournaments
-that keeps players coming back before, during, and after the whistle.
+turns the wait between big moments into a game. During any live match, players make
+short yes or no calls on the next goal, card, or corner, and every call is settled
+by a verifiable live data feed, not by a house. The same feed decides every outcome,
+so the result is the same for everyone and each one can be checked on-chain. Around
+that sits a light social and rewards layer, streaks, squads, chat, and sponsor-funded
+tournaments, that keeps players coming back before, during, and after the whistle.
 
 ### Business highlights
 
@@ -491,6 +491,14 @@ Add captures from fanfield.xyz to `docs/screenshots/` and they will show here.
 ![Tournament — standings and prize](docs/screenshots/tournament.png)
 
 ![Replay — animated match timeline](docs/screenshots/replay.png)
+
+![Lineup - Players lineup before kickoff](docs/screenshots/lineup.png)
+
+![Telegram Bot alert](docs/screenshots/tg.png)
+
+![Voice Agent](docs/screenshots/agent.png)
+
+![ Merkle proof for fixture statistics](docs/screenshots/explor.png)
 
 ## Project layout
 
