@@ -4,13 +4,24 @@ interface MomentumMeterProps {
   home: Team;
   away: Team;
   events: MatchEvent[];
+  possession?: number | null;         // home possession % from the live feed
+  possessionType?: string | null;     // Safe | Attack | Danger | HighDanger
 }
 
-export function MomentumMeter({ home, away, events }: MomentumMeterProps) {
-  const recent = events.slice(0, 6);
-  const homeCount = recent.filter((e) => e.side === 'home').length;
-  const homePct = recent.length ? Math.round((homeCount / recent.length) * 100) : 50;
+// Feed possession is the source of truth; fall back to recent-event share before it arrives.
+export function MomentumMeter({ home, away, events, possession, possessionType }: MomentumMeterProps) {
+  let homePct: number;
+  let live = false;
+  if (possession != null && possession >= 0 && possession <= 100) {
+    homePct = Math.round(possession);
+    live = true;
+  } else {
+    const recent = events.slice(0, 6);
+    const homeCount = recent.filter((e) => e.side === 'home').length;
+    homePct = recent.length ? Math.round((homeCount / recent.length) * 100) : 50;
+  }
   const awayPct = 100 - homePct;
+  const danger = possessionType === 'Danger' || possessionType === 'HighDanger';
 
   return (
     <div className="mt-3">
@@ -18,7 +29,9 @@ export function MomentumMeter({ home, away, events }: MomentumMeterProps) {
         <span className="flex items-center gap-1.5 text-chalk-dim">
           <span className="tabular text-grass">{homePct}%</span> {home.code}
         </span>
-        <span className="eyebrow">momentum</span>
+        <span className="eyebrow">
+          {live ? (danger ? 'possession · danger' : 'possession') : 'momentum'}
+        </span>
         <span className="flex items-center gap-1.5 text-chalk-dim">
           {away.code} <span className="tabular">{awayPct}%</span>
         </span>

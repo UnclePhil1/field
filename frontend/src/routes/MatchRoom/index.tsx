@@ -7,6 +7,7 @@ import { TrophyIcon, PlayIcon } from '../../components/Icons';
 import { ShareButton } from '../../components/ShareButton';
 import { LivePanel } from '../../features/match/LivePanel';
 import { RecentCalls } from '../../features/match/RecentCalls';
+import { LineupsPanel } from '../../features/match/LineupsPanel';
 import { CallScoreCard } from '../../features/match/CallScoreCard';
 import { SquadPanel } from '../../features/squad/SquadPanel';
 import { PredictionCard } from '../../features/prediction/PredictionCard';
@@ -87,6 +88,7 @@ export function MatchRoom() {
           <ShareButton label="Share match" />
         </div>
         <LivePanel match={match} events={events} />
+        {match.status !== 'upcoming' && <LineupsPanel match={match} />}
         <RecentCalls calls={recentCalls} onViewProof={setProof} />
       </div>
 

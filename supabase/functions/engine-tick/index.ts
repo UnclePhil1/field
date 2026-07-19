@@ -3,6 +3,7 @@ import { json } from '../_shared/cors.ts';
 import { getSession, fetchFixtures, fetchScores, fetchOdds, fetchScoresHistorical, fetchStatValidation, type TxFixture } from '../_shared/txline.ts';
 import { merkleRootFrom } from '../_shared/proof.ts';
 import { generateCard, isLivePhase, type MatchPhase } from '../_shared/cards.ts';
+import { buildPlayerIndex, parseLineups, sideMap, attributeEvents, eventPlayerQueue, possessionFrom, formatPlayerName, type QueuedPlayer } from '../_shared/players.ts';
 import { stageFor } from '../_shared/stage.ts';
 import { impliedWinProbability, multiplierFromProb } from '../_shared/odds.ts';
 import { score } from '../_shared/scoring.ts';
@@ -154,6 +155,13 @@ async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean>
   if (!Array.isArray(hist) || hist.length === 0) return false;
 
   const entries = ([...hist] as Entry[]).sort((a, b) => Number(a?.Ts ?? 0) - Number(b?.Ts ?? 0));
+  const playerIndex = buildPlayerIndex(hist);
+  const lineups = parseLineups(hist, m.home_name ?? m.home_code, m.away_name ?? m.away_code);
+  const queue: QueuedPlayer[] = eventPlayerQueue(hist, playerIndex, sideMap(lineups));
+  const take = (kind: 'goal' | 'card' | 'corner', side: 'home' | 'away'): string | null => {
+    const i = queue.findIndex((q) => q.kind === kind && q.side === side);
+    return i < 0 ? null : queue.splice(i, 1)[0].name;
+  };
   const prev: Record<string, number> = {};
   const events: Record<string, unknown>[] = [];
   let seq = Date.now();
@@ -173,7 +181,8 @@ async function backfillReplay(db: any, session: any, m: Entry): Promise<boolean>
         const teamCode = def.side === 'home' ? m.home_code : m.away_code;
         for (let i = p; i < cur; i++) {
           const spot = spotFor(def.kind, def.side);
-          events.push({ match_id: m.id, kind: def.kind, side: def.side, minute, label: `${def.label} · ${teamCode}`, x: spot.x, y: spot.y, seq: seq++ });
+          const pName = take(def.kind, def.side);
+          events.push({ match_id: m.id, kind: def.kind, side: def.side, minute, label: pName ? `${def.label} · ${teamCode} · ${pName}` : `${def.label} · ${teamCode}`, player: pName, x: spot.x, y: spot.y, seq: seq++ });
         }
       }
       prev[keyStr] = Math.max(p, cur);
@@ -284,6 +293,39 @@ Deno.serve(async (req) => {
     } catch { /* tolerate; cards in this window will void */ }
 
     const latest = pickLatest(scores);
+
+    // Player attribution + lineups + live possession from the feed (all best-effort;
+    // absent before kickoff or when the feed omits them).
+    const lineups = parseLineups(scores, m.home_name ?? m.home_code, m.away_name ?? m.away_code);
+    const playerIndex = buildPlayerIndex(scores);
+    const sides = sideMap(lineups);
+    const attribution = attributeEvents(scores, playerIndex, sides);
+    const possession = possessionFrom(scores);
+
+    // The feed carries no per-player stat totals, so tally goal/card pips for the
+    // lineup from the events we've already attributed (matched by short name).
+    if (lineups) {
+      const { data: evs } = await db
+        .from('match_events')
+        .select('kind, player')
+        .eq('match_id', m.id)
+        .not('player', 'is', null);
+      const g: Record<string, number> = {};
+      const c: Record<string, number> = {};
+      for (const e of evs ?? []) {
+        const key = String((e as { player: string }).player);
+        if ((e as { kind: string }).kind === 'goal') g[key] = (g[key] ?? 0) + 1;
+        else if ((e as { kind: string }).kind === 'card') c[key] = (c[key] ?? 0) + 1;
+      }
+      for (const t of [lineups.home, lineups.away]) {
+        for (const p of t.players) {
+          const short = formatPlayerName(p.name);
+          p.goals = g[short] ?? 0;
+          p.yellow = c[short] ?? 0;
+        }
+      }
+    }
+
     if (latest) {
       const statusId = Number(latest.StatusId ?? 0);
       const realPhase = phaseFromStatusId(statusId);
@@ -291,7 +333,7 @@ Deno.serve(async (req) => {
       const realMinute = liveMinute(latest, realPhase);
       m.phase = realPhase;     // keep loop-local values in sync for events/cards below
       m.minute = realMinute;
-      await db.from('matches').update({
+      const matchUpdate: Record<string, unknown> = {
         status: realStatus,
         phase: realPhase,
         minute: realMinute,
@@ -301,8 +343,11 @@ Deno.serve(async (req) => {
         away_yellow: statOf(latest, 4) ?? 0,
         home_red: statOf(latest, 5) ?? 0,
         away_red: statOf(latest, 6) ?? 0,
+        possession_type: possession.type,
         updated_at: new Date().toISOString(),
-      }).eq('id', m.id);
+      };
+      if (lineups) matchUpdate.lineups = lineups; // don't clobber a cached roster with null
+      await db.from('matches').update(matchUpdate).eq('id', m.id);
 
       if (realStatus === 'live') {
         await db.from('tournaments').update({ status: 'live' }).eq('match_id', m.id).eq('status', 'upcoming');
@@ -425,14 +470,22 @@ Deno.serve(async (req) => {
       const prev = prevSnap[keyStr];
       if (prev == null || current <= prev) continue;
       const teamCode = def.side === 'home' ? m.home_code : m.away_code;
+      // Attribute goals/cards to the latest scorer/booked player on that side (feed
+      // gives no player for corners). Only the newest event in a multi-increment
+      // tick carries the name — older ones fall back to team-only.
+      const pName = attribution.byKindSide[`${def.kind}:${def.side}`] ?? null;
+      const gtRaw = attribution.goalType[`goal:${def.side}`];
+      const gt = def.kind === 'goal' && gtRaw && gtRaw !== 'Shot' && gtRaw !== 'Other' ? ` (${gtRaw})` : '';
       for (let i = prev; i < current; i++) {
         const spot = spotFor(def.kind, def.side);
+        const attribute = i === current - 1 ? pName : null; // newest increment only
         newEvents.push({
           match_id: m.id,
           kind: def.kind,
           side: def.side,
           minute: m.minute,
-          label: `${def.label} · ${teamCode}`,
+          label: attribute ? `${def.label}${gt} · ${teamCode} · ${attribute}` : `${def.label} · ${teamCode}`,
+          player: attribute,
           x: spot.x,
           y: spot.y,
           seq: seqBase++,
@@ -452,23 +505,27 @@ Deno.serve(async (req) => {
       const inAud = async (cat: 'goals' | 'cards' | 'corners') => inCache[cat] ??= await allowed(db, interested, (p) => p.match_events?.[cat] !== false);
       for (const ev of newEvents) {
         const kind = ev.kind as 'goal' | 'card' | 'corner';
+        const player = ev.player as string | null;
         const teamCode = ev.side === 'home' ? m.home_code : m.away_code;
         const teamName = ev.side === 'home' ? (m.home_name ?? m.home_code) : (m.away_name ?? m.away_code);
         let title: string, cat: 'goals' | 'cards' | 'corners';
         if (kind === 'goal') {
-          title = `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
+          title = player
+            ? `⚽ GOAL! ${player} — ${m.home_code} ${hs}–${as} ${m.away_code}`
+            : `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
           cat = 'goals';
         } else if (kind === 'card') {
           const red = /red/i.test(String(ev.label));
-          title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${teamCode}`;
+          title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${player ? player : teamCode}`;
           cat = 'cards';
         } else {
           title = `⛳ Corner — ${teamCode}`;
           cat = 'corners';
         }
+        const who = player ? `${player} · ` : '';
         await fanOut(db, await tgAud(cat), await inAud(cat), {
           title,
-          body: `${teamName} · ${ev.minute}'${m.stage ? ' · ' + m.stage : ''}`,
+          body: `${who}${teamName} · ${ev.minute}'${m.stage ? ' · ' + m.stage : ''}`,
           url: `/match/${m.id}`,
         }, 'match-event');
       }
@@ -492,11 +549,33 @@ Deno.serve(async (req) => {
         outcome = current > baseline ? 'yes' : 'no';
       }
 
+      // Attribute the player whose action resolved a YES (scorer / booked / corner-taker).
+      let resolvedPlayer: string | null = null;
+      if (outcome === 'yes' && card.stat) {
+        const { data: evs } = await db
+          .from('match_events')
+          .select('player, side')
+          .eq('match_id', m.id)
+          .eq('kind', card.stat)
+          .not('player', 'is', null)
+          .gte('created_at', card.created_at)
+          .order('seq', { ascending: false })
+          .limit(6);
+        const hit = (evs ?? []).find((e: any) => card.stat === 'card' || e.side === card.side) ?? (evs ?? [])[0];
+        resolvedPlayer = hit?.player ?? null;
+      }
+
       const resolvedLabel =
         outcome == null
           ? "Couldn't verify in window — voided"
           : outcome === 'yes'
-            ? `${card.subject_team} ${card.stat} verified at ${m.minute}′`
+            ? resolvedPlayer
+              ? card.stat === 'goal'
+                ? `${resolvedPlayer} scored for ${card.subject_team} at ${m.minute}′`
+                : card.stat === 'card'
+                  ? `${resolvedPlayer} booked at ${m.minute}′`
+                  : `Corner won by ${card.subject_team} (${resolvedPlayer}) at ${m.minute}′`
+              : `${card.subject_team} ${card.stat} verified at ${m.minute}′`
             : `No ${card.stat} for ${card.subject_team} in the window`;
 
       const seq = Number(latest?.Seq ?? 0);
@@ -510,7 +589,7 @@ Deno.serve(async (req) => {
           merkleRoot = r.short;
           merkleRootFull = r.full;
           if (anchorEnabled) {
-            const memo = `FanField proof · ${resolvedLabel} · fixture ${m.txline_fixture_id} · seq ${seq} · key ${card.txline_stat_key} · validate_stat`;
+            const memo = `FanField · "${card.question}" · ${resolvedLabel} · fixture ${m.txline_fixture_id} · seq ${seq} · validate_stat`;
             anchorSig = await anchorStatOnChain(validation, memo);
           }
         } catch { /* keep '—' */ }
@@ -518,6 +597,9 @@ Deno.serve(async (req) => {
 
       const receipt = {
         source: 'TxLINE live feed',
+        question: card.question,
+        outcome: outcome ?? 'void',
+        resolvedPlayer,
         statVerified: resolvedLabel,
         merkleRoot,
         merkleRootFull,
@@ -534,6 +616,7 @@ Deno.serve(async (req) => {
         status: 'settled',
         outcome: outcome ?? null,
         resolved_stat_label: resolvedLabel,
+        resolved_player: resolvedPlayer,
         receipt,
         txline_seq: Number(latest?.Seq ?? 0) || null,
       }).eq('id', card.id);
@@ -596,7 +679,7 @@ Deno.serve(async (req) => {
             : prof.streak > 0 ? `💔 Streak reset (was ${prof.streak}) — start a new run.` : 'No points this time.';
           await notifyAll(db, callRow.user_id, {
             title,
-            body: `${card.question}\n${streakLine}`,
+            body: `${resolvedLabel}\n${streakLine}`,
             url: `/match/${m.id}`,
             kind: 'settled',
           }).catch(() => {});
@@ -629,7 +712,7 @@ Deno.serve(async (req) => {
           const won = tc.pick === outcome;
           await notifyAll(db, tc.user_id, {
             title: won ? `🏆 Tournament call hit — +${delta}` : `✕ Tournament call missed — ${delta}`,
-            body: `${card.question}\nStack: ${newPoints.toLocaleString('en-US')} pts`,
+            body: `${resolvedLabel}\nStack: ${newPoints.toLocaleString('en-US')} pts`,
             url: `/tournaments/${tc.tournament_id}`,
             kind: 'settled',
           }).catch(() => {});
@@ -646,7 +729,7 @@ Deno.serve(async (req) => {
     if (!openCount || openCount === 0) {
       const phase = (m.phase as MatchPhase) ?? '2H';
       if (isLivePhase(phase) && phase !== 'HT') {
-        const gen = generateCard({ phase, homeCode: m.home_code, awayCode: m.away_code, windowSeconds: CARD_WINDOW_SECONDS });
+        const gen = generateCard({ phase, homeCode: m.home_code, awayCode: m.away_code, windowSeconds: CARD_WINDOW_SECONDS, momentum: possession });
         const baseline = gen.txline_stat_key != null ? statOf(latest, gen.txline_stat_key) : null;
 
         let multiplier = gen.multiplier;
@@ -709,6 +792,88 @@ Deno.serve(async (req) => {
     log.replaysBuilt = built;
   } catch (e) {
     log.replaysBuilt = `error: ${e instanceof Error ? e.message : e}`;
+  }
+
+  // ── Backfill lineups for finished matches missing them (the snapshot still
+  // returns the roster post-match), so lineups show on completed games too. ──
+  try {
+    const { data: needLineups } = await db
+      .from('matches')
+      .select('id, txline_fixture_id, home_name, home_code, away_name, away_code')
+      .eq('status', 'finished')
+      .is('lineups', null)
+      .not('txline_fixture_id', 'is', null)
+      .order('kickoff', { ascending: false })
+      .limit(3);
+    let filled = 0;
+    for (const fm of needLineups ?? []) {
+      try {
+        const sc = await fetchScores(session, Number(fm.txline_fixture_id));
+        const lu = parseLineups(sc, fm.home_name ?? fm.home_code, fm.away_name ?? fm.away_code);
+        if (!lu) continue;
+        const { data: evs } = await db.from('match_events').select('kind, player').eq('match_id', fm.id).not('player', 'is', null);
+        const g: Record<string, number> = {}, c: Record<string, number> = {};
+        for (const e of evs ?? []) {
+          const key = String((e as { player: string }).player);
+          if ((e as { kind: string }).kind === 'goal') g[key] = (g[key] ?? 0) + 1;
+          else if ((e as { kind: string }).kind === 'card') c[key] = (c[key] ?? 0) + 1;
+        }
+        for (const t of [lu.home, lu.away]) for (const p of t.players) { const s = formatPlayerName(p.name); p.goals = g[s] ?? 0; p.yellow = c[s] ?? 0; }
+        await db.from('matches').update({ lineups: lu }).eq('id', fm.id);
+        filled++;
+      } catch { /* skip; retry next tick */ }
+    }
+    log.lineupsFilled = filled;
+  } catch (e) {
+    log.lineupsFilled = `error: ${e instanceof Error ? e.message : e}`;
+  }
+
+  // ── Anchor settled cards on-chain, retrying until the stat's Merkle root has
+  // been published on-chain (the proof isn't available the instant a stat happens).
+  // Also corrects older receipts that fell back to the program address link. ──
+  try {
+    const { data: toAnchor } = await db
+      .from('prediction_cards')
+      .select('id, match_id, question, outcome, txline_stat_key, txline_seq, resolved_stat_label, receipt')
+      .eq('status', 'settled')
+      .not('outcome', 'is', null)
+      .not('txline_stat_key', 'is', null)
+      .not('txline_seq', 'is', null)
+      .filter('receipt->>anchorTx', 'is', null)
+      .order('locks_at', { ascending: false })
+      .limit(3);
+    let anchored = 0;
+    for (const c of toAnchor ?? []) {
+      try {
+        const { data: mm } = await db.from('matches').select('txline_fixture_id').eq('id', c.match_id).maybeSingle();
+        if (!mm?.txline_fixture_id) continue;
+        const validation = await fetchStatValidation(session, Number(mm.txline_fixture_id), Number(c.txline_seq), Number(c.txline_stat_key));
+        const r = merkleRootFrom(validation);
+        if (!r.full) continue; // root not published on-chain yet — retry next tick
+        let anchorSig: string | null = null;
+        if (anchorEnabled) {
+          const memo = `FanField · "${c.question}" · ${c.resolved_stat_label ?? 'stat'} · fixture ${mm.txline_fixture_id} · seq ${c.txline_seq} · validate_stat`;
+          anchorSig = await anchorStatOnChain(validation, memo);
+        }
+        if (!anchorSig) continue; // couldn't send the tx — retry next tick
+        const receipt = {
+          ...(c.receipt as Record<string, unknown> ?? {}),
+          question: c.question,
+          outcome: c.outcome,
+          merkleRoot: r.short,
+          merkleRootFull: r.full,
+          anchorTx: anchorSig,
+          txRef: `${anchorSig.slice(0, 8)}…${anchorSig.slice(-6)}`,
+          explorerUrl: `https://explorer.solana.com/tx/${anchorSig}${CLUSTER_QS}`,
+        };
+        await db.from('prediction_cards').update({ receipt }).eq('id', c.id);
+        await db.from('settlements').update({ receipt }).eq('card_id', c.id);
+        anchored++;
+      } catch { /* proof not ready or send failed — retry next tick */ }
+    }
+    log.anchored = anchored;
+  } catch (e) {
+    log.anchored = `error: ${e instanceof Error ? e.message : e}`;
   }
 
   return json({ ok: true, ...log });

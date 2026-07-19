@@ -19,6 +19,7 @@ Demo video (walkthrough): **https://youtu.be/O44zeDOH-YM**
 
 - [Demo video](#demo-video)
 - [Brief technical documentation](#brief-technical-documentation)
+- [How the main parts work](#how-the-main-parts-work)
 - [What you can do](#what-you-can-do)
 - [How a prediction works](#how-a-prediction-works)
 - [Tournaments (Prediction Battles)](#tournaments-prediction-battles)
@@ -127,6 +128,173 @@ Fixtures give us the match list. Scores snapshots and updates drive the live clo
 phase (from the status id), score, cards, and corners, and settle prediction cards.
 Odds set the payout multiplier. Stat validation backs the provably-fair receipt.
 
+### Proof of on-chain verification
+
+Provably fair is not just a claim here. When a prediction card settles, FanField
+fetches the Merkle proof for that exact stat from TxLINE and submits a
+validate_stat transaction to the TxODDS oracle program on Solana mainnet. The
+program checks the proof against the root anchored on-chain and confirms the stat.
+
+Here is a real one you can open right now. It validates the corner stat that
+settled the card "Corner for ENG in the next 5:00?" (fixture 18241006):
+
+https://explorer.solana.com/tx/4gD2p84DqP9uSJ5PXt1UoKsEVo8YpPg9H6GZLY4PTYWDJcyXkoLQpMKrysxCCwcA6gLjRvxv3MkxRukJbjxQ42h9
+
+The transaction logs show the oracle program running the full check: fixture-level
+validation passes, the stat proof resolves against the on-chain root, and the
+predicate evaluates to true. Each settled call's receipt in the app links to its
+own transaction like this one, so any player can verify their result end to end.
+
+## How the main parts work
+
+This part walks through the five biggest pieces of FanField. For each piece you get
+a plain description of what it does, the files behind it, and what each file does.
+Read this and you will understand how the app is built and how the parts fit
+together.
+
+### 1. Merkle proof and the on-chain check
+
+What it does: when a prediction settles, FanField does more than say you won or lost.
+It proves the stat really happened. It gets a Merkle proof from the data feed, then
+sends a small transaction to the TxODDS program on Solana. The program checks the
+proof against the record already saved on the chain. If it matches, the result is
+real. Anyone can open the transaction and watch the check pass.
+
+A Merkle proof is a short set of hashes that shows one small fact (like "home team
+corners went up by one") belongs to a big batch of match data, without needing the
+whole batch. The batch has one short fingerprint called the root, and that root is
+saved on the chain.
+
+Files:
+
+- `supabase/functions/_shared/txline.ts`: talks to the TxLINE feed. The function
+  `fetchStatValidation` asks the feed for the proof of one stat. The same file also
+  fetches fixtures, live scores, and odds.
+- `supabase/functions/_shared/proof.ts`: the function `merkleRootFrom` reads the
+  proof and pulls out the root hash, the short fingerprint of the whole batch.
+- `supabase/functions/_shared/anchor.ts`: builds and sends the `validate_stat`
+  transaction to Solana. It packs the proof into the exact byte layout the program
+  expects, adds a short note (a memo), signs it with the app wallet, and sends it.
+  This file turns "we have a proof" into "the chain checked it".
+- `supabase/functions/engine-tick/index.ts`: at settle time it calls the three files
+  above. The feed publishes the root about once an hour, so if the proof is not ready
+  yet, the engine saves the result and tries again on a later run until the
+  transaction goes through.
+- `supabase/functions/txline-proof/index.ts`: a small endpoint the app calls when a
+  player taps "how was this proven". It fetches the proof again and returns it with
+  the saved receipt.
+- `frontend/src/features/receipt/ProofModal.tsx` and `Receipt.tsx`: the pop-up and
+  the small receipt line a player sees. They show the question, the result, the root,
+  and a link to the real transaction.
+
+### 2. Players: lineups, who did what, and momentum
+
+What it does: FanField shows the starting eleven and the bench for both teams, puts
+the player name on every goal, card, and corner, and reads how dangerous the play is
+right now. All of this comes from the live feed.
+
+One thing to know: the live feed does not match the written docs. The real feed uses
+capital field names and sends each event as a small message. Also, an event names the
+player by one id (the normativeId) while the team list uses a different id (the
+fixturePlayerId). The code handles both ids, so names line up with the right player.
+
+Files:
+
+- `supabase/functions/_shared/players.ts`: this is the brain for player data.
+  - `parseLineups` reads the two team lists and splits them into home and away, each
+    with shirt number, name, and starter or bench.
+  - `buildPlayerIndex` maps every player id (both id types) to a short name like
+    "J. Bellingham".
+  - `sideMap` says which side each player id belongs to.
+  - `attributeEvents` finds the latest scorer or booked player for each side.
+  - `eventPlayerQueue` does the same in time order, used to rebuild replays.
+  - `possessionFrom` reads how the play looks right now (Safe, Attack, Danger, or
+    High Danger) and whether a goal or corner seems close.
+  - `formatPlayerName` turns "Bellingham, Jude" into "J. Bellingham".
+- `supabase/migrations/0019_lineups_players.sql`: adds the new database columns:
+  `lineups` and `possession_type` on matches, `player` on match_events, and
+  `resolved_player` on prediction_cards.
+- `supabase/functions/engine-tick/index.ts`: every minute it parses the lineups and
+  saves them, tags new goals and cards with the player, counts each player's goals
+  and cards from the saved events, and also fills in lineups for matches that already
+  finished.
+- `frontend/src/features/match/LineupsPanel.tsx`: shows both teams, the starting
+  eleven, a bench you can open, and small marks for goals and cards next to a name.
+- `frontend/src/features/match/MomentumMeter.tsx`: shows a bar and a word like
+  "danger" when the feed says a chance is building.
+- `frontend/src/features/match/EventTicker.tsx`: the strip of recent events, now with
+  the player name in each label.
+
+### 3. Prediction cards (Flash Pools)
+
+What it does: during a match, the app opens a short yes or no question, like "Corner
+for England in the next 5 minutes". You pick yes or no and stake coins. When the
+window ends, the engine reads the feed and settles it. The result is the same for
+everyone because it comes from the feed, not from a person.
+
+Files:
+
+- `supabase/functions/_shared/cards.ts`: the function `generateCard` makes a new
+  card. It picks the stat and the team, sets the payout, and uses momentum, so when
+  the play is dangerous it leans toward goal or corner cards. `statKey` maps a stat
+  and match phase to the exact number used to read that stat from the feed.
+- `supabase/functions/place-call/index.ts`: runs when a player locks a call. It
+  checks the card is still open, checks the player has enough coins, and saves the
+  pick. It runs on the server, so a player cannot fake a balance or a stake.
+- `supabase/functions/_shared/scoring.ts`: the function `score` works out the coins
+  won or lost, the leaderboard points, and the new streak once a card settles.
+- `supabase/functions/engine-tick/index.ts`: opens a new card when none is open, and
+  settles the due card by comparing the feed stat now to the value when the card
+  opened. It writes the receipt and updates coins and streaks.
+- `frontend/src/features/prediction/PredictionCard.tsx`: the card a player sees. Yes
+  and no buttons, the stake stepper, the countdown ring, and the result view after
+  it settles.
+- `frontend/src/lib/useLiveMatch.ts` and `frontend/src/lib/api.ts`: keep the match,
+  the events, and the current card fresh in the browser using Supabase Realtime.
+
+### 4. Telegram bot
+
+What it does: a player can link their FanField account to Telegram and get the same
+alerts there. Goals, kick-off, full-time, new cards, and tournament results.
+
+Files:
+
+- `supabase/functions/telegram/index.ts`: the link flow. It makes a short code, and
+  when the player starts the bot with that code, it ties one Telegram chat to one
+  account. It can also unlink.
+- `supabase/functions/telegram-webhook/index.ts`: the endpoint Telegram calls when
+  someone messages the bot. It checks a secret so only real Telegram requests get in,
+  reads the code, and sends the welcome message.
+- `supabase/functions/_shared/telegram.ts`: the send helpers. `sendToChat` sends to
+  one chat, and `broadcastTelegram` sends to many at once.
+- `supabase/functions/_shared/notify.ts`: the function `notifyAll` sends one event to
+  all three places at once, the in-app inbox, browser push, and Telegram, and each
+  one respects the player's own settings.
+
+### 5. Voice agent (Angel)
+
+What it does: Angel is a voice buddy. A player can ask out loud for the score,
+corners, cards, or their own streak, and she answers from the live feed. The first
+five sessions are free, then there is a small monthly plan paid in USDC.
+
+Files:
+
+- `supabase/functions/voice-session/index.ts`: the server side. It checks how many
+  free trials the player has left, checks if their paid plan is active, and when a
+  player pays, it verifies the USDC payment on Solana before giving access. It holds
+  the voice key, so the key never reaches the browser.
+- `supabase/functions/_shared/solana.ts`: the function `verifyUsdcPayment` reads the
+  chain to confirm the player really sent the USDC to the app wallet.
+- `frontend/src/features/voice/useAngel.ts`: runs the live voice chat in the browser
+  and handles the back and forth talking.
+- `frontend/src/features/voice/angelTools.ts`: the list of things Angel can look up,
+  like score and streak, wired to real data.
+- `frontend/src/features/voice/AngelButton.tsx`, `AngelCaption.tsx`, and
+  `AngelPaywall.tsx`: the button to start her, the live captions, and the pay screen
+  once the free trials run out.
+- `frontend/src/lib/voiceApi.ts`: the browser side that calls `voice-session` to
+  start a session and to check access.
+
 ## What you can do
 
 - Play along with live matches and call the next goal, card, or corner.
@@ -134,6 +302,9 @@ Odds set the payout multiplier. Stat validation backs the provably-fair receipt.
 - Earn coins and climb a global leaderboard.
 - Join tournaments with a free points stack and compete for host-funded USDC prizes.
 - Rewatch any finished match in Replay mode, with an animated timeline of events.
+- Talk to Angel, the voice agent. Ask for the score, corners, cards, or your own
+  streak out loud and she answers from the live TxLINE data (five free sessions,
+  then a small monthly subscription). Also at agent.fanfield.xyz.
 - Get alerts in the app, as browser push, and on Telegram.
 - Sign in with a username and password or with a Solana wallet, and link the other later.
 

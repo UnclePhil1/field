@@ -45,6 +45,24 @@ const SYNC_LINES = [
   'end-to-end right now',
 ];
 
+// Live momentum from the TxLINE feed, used to time and phrase the card.
+// Possession direction isn't exposed by the feed, so this is match-level intensity
+// plus the kind of event the feed flags as imminent.
+export interface Momentum {
+  type: string | null;                     // Safe | Attack | Danger | HighDanger
+  possibleKind: 'goal' | 'corner' | null;  // imminent-event kind
+}
+
+function syncLineFor(type: string | null): string {
+  switch (type) {
+    case 'HighDanger': return 'high danger — a big chance is building';
+    case 'Danger': return 'danger rising in the final third';
+    case 'Attack': return 'on the front foot, pushing forward';
+    case 'Safe': return 'knocking it around, tempo settling';
+    default: return SYNC_LINES[Math.floor(Math.random() * SYNC_LINES.length)];
+  }
+}
+
 export interface GeneratedCard {
   stat: StatKind;
   side: Side;
@@ -62,11 +80,30 @@ export function generateCard(input: {
   homeCode: string;
   awayCode: string;
   windowSeconds?: number;
+  momentum?: Momentum;
 }): GeneratedCard {
-  const tpl = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+  const mo = input.momentum;
+  const windowSeconds = input.windowSeconds ?? 300;
+  const danger = mo?.type === 'Danger' || mo?.type === 'HighDanger';
+
+  // Prefer the stat the feed flags as imminent; otherwise weight toward attacking
+  // markets when play is dangerous; otherwise fully random.
+  let tpl: { stat: StatKind; q: (team: string) => string };
+  if (mo?.possibleKind) {
+    tpl = TEMPLATES.find((t) => t.stat === mo.possibleKind) ?? TEMPLATES[1];
+  } else if (danger) {
+    tpl = Math.random() > 0.5 ? TEMPLATES[1] /* goal */ : TEMPLATES[0] /* corner */;
+  } else {
+    tpl = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+  }
+
   const side: Side = Math.random() > 0.5 ? 'home' : 'away';
   const subject = side === 'home' ? input.homeCode : input.awayCode;
-  const windowSeconds = input.windowSeconds ?? 300;
+
+  // Livelier crowd + shorter multiplier when the feed says a chance is brewing.
+  let crowdYes = Math.round(35 + Math.random() * 40);
+  if (danger && tpl.stat !== 'card') crowdYes = Math.min(80, crowdYes + 12);
+
   return {
     stat: tpl.stat,
     side,
@@ -74,8 +111,8 @@ export function generateCard(input: {
     subject_team: subject,
     multiplier: +(1.6 + Math.random() * 1.6).toFixed(1),
     window_seconds: windowSeconds,
-    crowd_yes: Math.round(35 + Math.random() * 40),
-    sync_line: SYNC_LINES[Math.floor(Math.random() * SYNC_LINES.length)],
+    crowd_yes: crowdYes,
+    sync_line: syncLineFor(mo?.type ?? null),
     txline_stat_key: statKey(tpl.stat, side, input.phase),
   };
 }

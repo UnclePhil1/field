@@ -6,6 +6,7 @@ import type {
   Player,
   SettledCall,
   Receipt,
+  FixtureLineups,
 } from '../types';
 
 type MatchRow = {
@@ -27,6 +28,9 @@ type MatchRow = {
   home_red: number | null;
   away_yellow: number | null;
   away_red: number | null;
+  possession: number | null;
+  possession_type: string | null;
+  lineups: FixtureLineups | null;
   kickoff: string | null;
 };
 
@@ -46,6 +50,9 @@ function toMatch(r: MatchRow): Match {
     homeRed: r.home_red ?? 0,
     awayYellow: r.away_yellow ?? 0,
     awayRed: r.away_red ?? 0,
+    possession: r.possession ?? null,
+    possessionType: r.possession_type ?? null,
+    lineups: r.lineups ?? null,
     kickoff: r.kickoff ?? new Date().toISOString(),
   };
 }
@@ -57,12 +64,13 @@ type EventRow = {
   side: MatchEvent['side'];
   minute: number;
   label: string;
+  player: string | null;
   x: number;
   y: number;
 };
 
 function toEvent(r: EventRow): MatchEvent {
-  return { id: r.id, matchId: r.match_id, kind: r.kind, side: r.side, minute: r.minute, label: r.label, x: r.x, y: r.y };
+  return { id: r.id, matchId: r.match_id, kind: r.kind, side: r.side, minute: r.minute, label: r.label, player: r.player ?? null, x: r.x, y: r.y };
 }
 
 type CardRow = {

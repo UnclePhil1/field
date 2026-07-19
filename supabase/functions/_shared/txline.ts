@@ -117,3 +117,18 @@ export function fetchStatValidation(
     `/api/scores/stat-validation?fixtureId=${fixtureId}&seq=${seq}&statKey=${statKey}`,
   );
 }
+
+// V3 compressed multiproof — validates up to 5 stats in one payload. Used to prove
+// combo/parlay pools against the on-chain root in a single check.
+export function fetchStatValidationV3(
+  s: Session,
+  fixtureId: number,
+  seq: number,
+  statKeys: number[],
+): Promise<Record<string, unknown>> {
+  const keys = statKeys.slice(0, 5).join(',');
+  return get<Record<string, unknown>>(
+    s,
+    `/api/scores/stat-validation-v3?fixtureId=${fixtureId}&seq=${seq}&statKeys=${keys}`,
+  );
+}

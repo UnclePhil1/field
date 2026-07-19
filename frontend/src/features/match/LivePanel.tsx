@@ -57,7 +57,13 @@ export function LivePanel({ match, events }: LivePanelProps) {
         <Pitch events={events} />
       </div>
 
-      <MomentumMeter home={match.home} away={match.away} events={events} />
+      <MomentumMeter
+        home={match.home}
+        away={match.away}
+        events={events}
+        possession={match.possession}
+        possessionType={match.possessionType}
+      />
       <EventTicker events={events} />
     </section>
   );

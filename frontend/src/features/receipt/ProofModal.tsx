@@ -77,31 +77,54 @@ export default function ProofModal({ open, onClose, receipt }: ProofModalProps) 
         </div>
 
         <p className="mt-2 text-sm text-chalk-dim">
-          Field never decides results itself. It checks one verifiable stat against data anchored on-chain.
+          FanField never decides results itself. It settles one verifiable stat, then asks the
+          TxODDS oracle to re-check that stat against data anchored on Solana.
         </p>
+
+        {view.question && (
+          <div className="mt-4 rounded-[14px] border border-edge-2 bg-turf-2 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">This pool asked</p>
+            <p className="mt-0.5 text-sm font-semibold text-chalk">{view.question}</p>
+            {view.outcome && (
+              <p className="mt-1 text-xs text-chalk-dim">
+                Resolved{' '}
+                <span className="font-bold text-grass">{view.outcome.toUpperCase()}</span> — {view.statVerified}
+              </p>
+            )}
+          </div>
+        )}
 
         <ol className="mt-5">
           <Step n={1} title="The stat">
-            {view.statVerified}. Sourced from the {view.source}.
+            {view.statVerified}. Sourced live from the {view.source}.
           </Step>
           <Step n={2} title="The Merkle root">
             That event sits inside a signed batch whose root is{' '}
             <span className="tabular font-semibold text-chalk">
               {loadingProof ? 'fetching…' : view.merkleRoot}
             </span>
-            . Your result&apos;s leaf hashes back to this exact root. Change one event and the root changes.
+            . The stat&apos;s leaf hashes back to this exact root — change one event and the root changes.
           </Step>
-          <Step n={3} title="Anchored on Solana">
-            The root is recorded on {view.anchoredOn} by the TxODDS oracle at ref{' '}
-            <span className="tabular font-semibold text-chalk">{view.txRef}</span>. Field only reads it. No transaction, no contract of ours.
-            {view.explorerUrl && (
+          <Step n={3} title="Re-checked on Solana">
+            FanField submits a <span className="font-semibold text-chalk">validate_stat</span> transaction to the
+            TxODDS oracle program on {view.anchoredOn}. The program re-runs the Merkle proof against the root it
+            published on-chain and confirms the stat is genuine — so the result doesn&apos;t rely on FanField&apos;s word.
+            {view.anchorTx ? (
+              <>
+                {' '}The proof transaction is{' '}
+                <span className="tabular font-semibold text-chalk">{view.txRef}</span>.
+              </>
+            ) : (
+              <> {' '}Waiting on the next on-chain batch to anchor this proof.</>
+            )}
+            {view.explorerUrl && view.anchorTx && (
               <a
                 href={view.explorerUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-2 inline-flex items-center gap-1 font-semibold text-grass hover:underline"
               >
-                Track the oracle on Solana Explorer ↗
+                View the proof transaction on Solana Explorer ↗
               </a>
             )}
           </Step>
@@ -109,20 +132,20 @@ export default function ProofModal({ open, onClose, receipt }: ProofModalProps) 
 
         <div className="mt-4 flex items-center justify-between rounded-[14px] border border-grass/30 bg-grass/10 px-4 py-3">
           <span className="flex items-center gap-2 text-sm font-bold text-grass">
-            <CheckIcon size={16} /> Verified against the chain
+            <CheckIcon size={16} /> {view.anchorTx ? 'Re-checked on-chain' : 'Verified against the chain'}
           </span>
-          {view.explorerUrl ? (
+          {view.anchorTx && view.explorerUrl ? (
             <a
               href={view.explorerUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-edge-2 bg-turf-2 px-2.5 py-1 text-[11px] font-semibold text-chalk-dim hover:border-grass/50 hover:text-chalk"
             >
-              View on Solana ↗
+              View proof tx ↗
             </a>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-edge-2 bg-turf-2 px-2.5 py-1 text-[11px] font-semibold text-chalk-dim">
-              Anchored on Solana
+              Anchoring…
             </span>
           )}
         </div>

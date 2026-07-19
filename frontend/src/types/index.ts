@@ -9,6 +9,29 @@ export interface Team {
 export type MatchPhase = 'PRE' | '1H' | 'HT' | '2H' | 'ET' | 'FT';
 export type MatchStatus = 'upcoming' | 'live' | 'finished';
 
+export interface LineupPlayer {
+  id: number;
+  normativeId?: number;
+  name: string;
+  number: string;
+  starter: boolean;
+  position: number;
+  goals: number;
+  yellow: number;
+  red: number;
+}
+export interface TeamLineup {
+  team: string;
+  players: LineupPlayer[];
+}
+export interface FixtureLineups {
+  home: TeamLineup;
+  away: TeamLineup;
+  publishedAt: string;
+}
+
+export type PossessionType = 'Safe' | 'Attack' | 'Danger' | 'HighDanger';
+
 export interface Match {
   id: string;
   competition: string; // "World Cup", "Premier League"
@@ -24,6 +47,9 @@ export interface Match {
   homeRed?: number;
   awayYellow?: number;
   awayRed?: number;
+  possession?: number | null;         // home possession %
+  possessionType?: PossessionType | string | null;
+  lineups?: FixtureLineups | null;
   kickoff: string;
 }
 
@@ -37,6 +63,7 @@ export interface MatchEvent {
   side: Side;
   minute: number;
   label: string;
+  player?: string | null;
   x: number;
   y: number;
 }
@@ -66,11 +93,15 @@ export interface PredictionCard {
 
 export interface Receipt {
   source: string; // "TxLINE live feed"
+  question?: string; // the flash-pool question, e.g. "A booking in the next 5:00?"
+  outcome?: string; // resolved outcome: "yes" | "no" | "void"
+  resolvedPlayer?: string | null; // player the feed attributed the resolving stat to
   statVerified: string; // "Corner awarded to ENG at 70'"
   merkleRoot: string; // "a91f…7c2e"
   merkleRootFull?: string | null;
   anchoredOn: string; // "Solana"
   txRef: string; // short ref hash
+  anchorTx?: string | null; // full signature of our validate_stat transaction
   cardId?: string;
   explorerUrl?: string;
 }
