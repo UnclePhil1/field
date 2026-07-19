@@ -515,7 +515,9 @@ Deno.serve(async (req) => {
             : `⚽ GOAL! ${m.home_code} ${hs}–${as} ${m.away_code}`;
           cat = 'goals';
         } else if (kind === 'card') {
-          const red = /red/i.test(String(ev.label));
+          // Test only the event-type segment, not the team/player name — a booking
+          // for a player like "Fred" must not match a naive /red/ on the whole label.
+          const red = String(ev.label).split(' · ')[0].startsWith('Red');
           title = `${red ? '🟥 Red card' : '🟨 Booking'} — ${player ? player : teamCode}`;
           cat = 'cards';
         } else {
