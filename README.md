@@ -11,7 +11,7 @@ on-chain. FanField never holds anyone's money.
 
 Live at **fanfield.xyz**
 
-Demo video (walkthrough): **https://youtu.be/O44zeDOH-YM**
+Demo video (walkthrough): **https://youtu.be/s3QrnsjrHxk?si=-ta9DKvRB9X1G95M**
 
 ---
 
@@ -40,7 +40,7 @@ Demo video (walkthrough): **https://youtu.be/O44zeDOH-YM**
 A full product walkthrough, including the problem it solves, a live app tour, and
 how the TxLINE feed powers the backend:
 
-**https://youtu.be/O44zeDOH-YM**
+**https://youtu.be/s3QrnsjrHxk?si=-ta9DKvRB9X1G95M**
 
 ## Brief technical documentation
 
@@ -51,7 +51,7 @@ turns any live match into a fast, social game: players make short yes/no calls o
 the next goal, card, or corner, and every call is settled from a verifiable live
 data feed rather than by a house. Because the same feed decides every outcome, the
 result is identical for everyone and can be checked. On top of that sits a light
-social and rewards layer — streaks, squads, chat, and sponsor-funded tournaments —
+social and rewards layer, streaks, squads, chat, and sponsor-funded tournaments
 that keeps players coming back before, during, and after the whistle.
 
 ### Business highlights
@@ -68,7 +68,7 @@ that keeps players coming back before, during, and after the whistle.
 
 ### Revenue
 
-FanField earns money in two clear ways.
+FanField earns money in three clear ways.
 
 The first way is coin top-ups. The game is free, and every player/user gets a coin on signup. When a player runs low on coins, they
 can buy more. The starter pack is 1,000 coins for 3 dollars, paid in USDC or SOL,
@@ -87,7 +87,9 @@ a player has already won and is cashing out, which keeps entry free of any house
 edge. This mode is opt-in and marked as coming soon in the app while the vault and
 payout flow are finished.
 
-Both models keep FanField out of heavy money handling. Coins are just game credits,
+Then we have the Voice agent subscription. Subscribe to Angel, your AI voice buddy who calls the games with you.
+
+These models keep FanField out of heavy money handling. Coins are just game credits,
 and for real-stake play the funds sit in a vault and are only touched to pay
 winners, with the small fee taken on the claim.
 
